@@ -11,20 +11,46 @@ auto TrieStore::Get(std::string_view key) -> std::optional<ValueGuard<T>> {
   // (2) Lookup the value in the trie.
   // (3) If the value is found, return a ValueGuard object that holds a reference to the value and the
   //     root. Otherwise, return std::nullopt.
-  throw NotImplementedException("TrieStore::Get is not implemented.");
+  root_lock_.lock();
+  auto a = rand();
+  std::cerr << "Getlock now:" << a << key << std::endl;
+  auto t = root_;
+  root_lock_.unlock();
+  std::cerr << "Getunlock now:" << a << key << std::endl;
+  const T *value = t.Get<T>(key);
+  if (value) {
+    return ValueGuard<T>(t, *value);
+  } else {
+    return std::nullopt;
+  }
 }
 
 template <class T>
 void TrieStore::Put(std::string_view key, T value) {
   // You will need to ensure there is only one writer at a time. Think of how you can achieve this.
   // The logic should be somehow similar to `TrieStore::Get`.
-  throw NotImplementedException("TrieStore::Put is not implemented.");
+  write_lock_.lock();
+  root_lock_.lock();
+  auto a = rand();
+  std::cerr << "Putlock now:" << a << key << std::endl;
+  auto t = root_;
+  root_lock_.unlock();
+  root_ = t.Put<T>(key, std::move(value));
+  std::cerr << "Putunlock now:" << a << std::endl;
+
+  write_lock_.unlock();
 }
 
 void TrieStore::Remove(std::string_view key) {
   // You will need to ensure there is only one writer at a time. Think of how you can achieve this.
   // The logic should be somehow similar to `TrieStore::Get`.
-  throw NotImplementedException("TrieStore::Remove is not implemented.");
+
+  write_lock_.lock();
+  root_lock_.lock();
+  auto t = root_;
+  root_ = t.Remove(key);
+  root_lock_.unlock();
+  write_lock_.unlock();
 }
 
 // Below are explicit instantiation of template functions.

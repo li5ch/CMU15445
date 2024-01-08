@@ -12,9 +12,11 @@
 
 #pragma once
 
+#include <algorithm>
 #include <limits>
 #include <list>
 #include <mutex>  // NOLINT
+#include <queue>
 #include <unordered_map>
 #include <vector>
 
@@ -26,14 +28,30 @@ namespace bustub {
 enum class AccessType { Unknown = 0, Get, Scan };
 
 class LRUKNode {
+ public:
+  bool operator>=(const LRUKNode &other) const {
+    if (history_.size() < k_ && other.history_.size() < k_) {
+      if (history_.empty()) return true;
+      if (other.history_.empty()) return false;
+      return history_.front() < other.history_.front();
+    }
+    if (history_.size() < k_) {
+      return true;
+    }
+    if (history_.back() <= other.history_.back()) {
+      return true;
+    }
+    return false;
+  }
+
  private:
   /** History of last seen K timestamps of this page. Least recent timestamp stored in front. */
   // Remove maybe_unused if you start using them. Feel free to change the member variables as you want.
 
-  [[maybe_unused]] std::list<size_t> history_;
-  [[maybe_unused]] size_t k_;
-  [[maybe_unused]] frame_id_t fid_;
-  [[maybe_unused]] bool is_evictable_{false};
+  std::list<size_t> history_;
+  size_t k_;
+  frame_id_t fid_;
+  bool is_evictable_{false};
 };
 
 /**
@@ -146,16 +164,22 @@ class LRUKReplacer {
    * @return size_t
    */
   auto Size() -> size_t;
+  bool cmp(const frame_id_t &a, const frame_id_t &b) {
+    auto node1 = node_store_[a];
+    auto node2 = node_store_[b];
+    return node1 >= node2;
+  };
 
  private:
   // TODO(student): implement me! You can replace these member variables as you like.
   // Remove maybe_unused if you start using them.
-  [[maybe_unused]] std::unordered_map<frame_id_t, LRUKNode> node_store_;
+  std::unordered_map<frame_id_t, LRUKNode> node_store_;
   [[maybe_unused]] size_t current_timestamp_{0};
-  [[maybe_unused]] size_t curr_size_{0};
-  [[maybe_unused]] size_t replacer_size_;
-  [[maybe_unused]] size_t k_;
-  [[maybe_unused]] std::mutex latch_;
+  size_t curr_size_{0};
+  size_t replacer_size_;
+  size_t k_;
+  std::mutex latch_;
+  std::priority_queue<frame_id_t, std::vector<frame_id_t>, decltype(cmp)> pq(cmp);
 };
 
 }  // namespace bustub

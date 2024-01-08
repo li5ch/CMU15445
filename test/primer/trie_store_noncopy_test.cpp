@@ -49,14 +49,17 @@ TEST(TrieStoreTest, ReadWriteTest) {
     {
       auto guard = store.Get<uint32_t>("a");
       ASSERT_EQ(**guard, 1);
+      //      std::cerr << "[1] thread guard" << std::endl;
     }
     {
       auto guard = store.Get<uint32_t>("b");
       ASSERT_EQ(**guard, 2);
+      //      std::cerr << "[2] thread guard" << std::endl;
     }
     {
       auto guard = store.Get<uint32_t>("c");
       ASSERT_EQ(**guard, 3);
+      //      std::cerr << "[3] thread guard" << std::endl;
     }
   }
 

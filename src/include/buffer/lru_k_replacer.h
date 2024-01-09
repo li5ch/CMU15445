@@ -29,29 +29,33 @@ enum class AccessType { Unknown = 0, Get, Scan };
 
 class LRUKNode {
  public:
-  bool operator>=(const LRUKNode &other) const {
-    if (history_.size() < k_ && other.history_.size() < k_) {
-      if (history_.empty()) return true;
-      if (other.history_.empty()) return false;
-      return history_.front() < other.history_.front();
+  LRUKNode() = default;
+
+  void add() {
+    if (history_.size() == k_) {
+      history_.pop_front();
     }
-    if (history_.size() < k_) {
-      return true;
-    }
-    if (history_.back() <= other.history_.back()) {
-      return true;
-    }
-    return false;
+    history_.push_back(static_cast<unsigned long>(
+        std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch())
+            .count()));
   }
+  size_t curSize() { return history_.size(); }
+  explicit LRUKNode(frame_id_t id, size_t k_)
+      : history_{static_cast<unsigned long>(
+            std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch())
+                .count())},
+        k_(k_),
+        fid_(id) {}
 
  private:
   /** History of last seen K timestamps of this page. Least recent timestamp stored in front. */
   // Remove maybe_unused if you start using them. Feel free to change the member variables as you want.
 
   std::list<size_t> history_;
-  size_t k_;
-  frame_id_t fid_;
+  size_t k_{};
+  frame_id_t fid_{};
   bool is_evictable_{false};
+  friend class LRUKReplacer;
 };
 
 /**
@@ -164,11 +168,6 @@ class LRUKReplacer {
    * @return size_t
    */
   auto Size() -> size_t;
-  bool cmp(const frame_id_t &a, const frame_id_t &b) {
-    auto node1 = node_store_[a];
-    auto node2 = node_store_[b];
-    return node1 >= node2;
-  };
 
  private:
   // TODO(student): implement me! You can replace these member variables as you like.
@@ -179,7 +178,10 @@ class LRUKReplacer {
   size_t replacer_size_;
   size_t k_;
   std::mutex latch_;
-  std::priority_queue<frame_id_t, std::vector<frame_id_t>, decltype(cmp)> pq(cmp);
+  std::list<frame_id_t> fifo_q_;
+  std::list<frame_id_t> k_lru_q_;
+  std::unordered_map<frame_id_t, std::list<frame_id_t>::iterator> node_2_lur_;
+  friend class LRUKNode;
 };
 
 }  // namespace bustub

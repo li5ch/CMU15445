@@ -35,23 +35,39 @@ LRUKReplacer::LRUKReplacer(size_t num_frames, size_t k) : replacer_size_(num_fra
 auto LRUKReplacer::Evict(frame_id_t *frame_id) -> bool {
   latch_.lock();
   if (!fifo_q_.empty()) {
-    *frame_id = fifo_q_.front();
-    fifo_q_.pop_front();
-    curr_size_--;
-
+    auto it = fifo_q_.begin();
+    while (it != fifo_q_.end() && node_store_[*it].is_evictable_ == false) {
+      it++;
+    }
+    if (it != fifo_q_.end()) {
+      fifo_q_.erase(it);
+      curr_size_--;
+      latch_.unlock();
+      return true;
+    }
     latch_.unlock();
-    return true;
+    return false;
   }
   if (!k_lru_q_.empty()) {
-    *frame_id = k_lru_q_.front();
-    curr_size_--;
+    auto it = k_lru_q_.begin();
+    while (it != k_lru_q_.end() && node_store_[*it].is_evictable_ == false) {
+      it++;
+    }
+    if (it != k_lru_q_.end()) {
+      k_lru_q_.erase(it);
+      curr_size_--;
+      latch_.unlock();
+      return true;
+    }
+    latch_.unlock();
+    return false;
   }
   latch_.unlock();
   return false;
 }
 
 void LRUKReplacer::RecordAccess(frame_id_t frame_id, [[maybe_unused]] AccessType access_type) {
-  assert(size_t(frame_id) < replacer_size_);
+  assert(size_t(frame_id) <= replacer_size_);
   latch_.lock();
   if (node_store_.count(frame_id) == 0) {
     curr_size_++;
@@ -108,9 +124,9 @@ void LRUKReplacer::SetEvictable(frame_id_t frame_id, bool set_evictable) {
   }
   if (!node_store_[frame_id].is_evictable_ && set_evictable) {
     curr_size_++;
-    if (curr_size_ ==) }
-  node_store_[frame_id].is_evictable_ = set_evictable;
-  latch_.unlock();
+    node_store_[frame_id].is_evictable_ = set_evictable;
+    latch_.unlock();
+  }
 }
 
 void LRUKReplacer::Remove(frame_id_t frame_id) {}

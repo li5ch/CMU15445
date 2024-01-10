@@ -36,7 +36,7 @@ auto LRUKReplacer::Evict(frame_id_t *frame_id) -> bool {
   latch_.lock();
   if (!fifo_q_.empty()) {
     auto it = fifo_q_.begin();
-    while (it != fifo_q_.end() && node_store_[*it].is_evictable_ == false) {
+    while (it != fifo_q_.end() && !node_store_[*it].is_evictable_) {
       it++;
     }
     if (it != fifo_q_.end()) {
@@ -50,7 +50,7 @@ auto LRUKReplacer::Evict(frame_id_t *frame_id) -> bool {
   }
   if (!k_lru_q_.empty()) {
     auto it = k_lru_q_.begin();
-    while (it != k_lru_q_.end() && node_store_[*it].is_evictable_ == false) {
+    while (it != k_lru_q_.end() && !node_store_[*it].is_evictable_) {
       it++;
     }
     if (it != k_lru_q_.end()) {
@@ -129,7 +129,27 @@ void LRUKReplacer::SetEvictable(frame_id_t frame_id, bool set_evictable) {
   }
 }
 
-void LRUKReplacer::Remove(frame_id_t frame_id) {}
+void LRUKReplacer::Remove(frame_id_t frame_id) {
+  if(node_store_.count(frame_id)==0)return;
+  if(!node_store_[frame_id].is_evictable_) throw bustub::Exception("invalid frame id");
+  auto node = node_store_[frame_id];
+  if(node.curSize()==k_){
+    auto it = node_2_lur_[frame_id];
+    k_lru_q_.erase(it);
+    node_2_lur_.erase(frame_id);
+    node_store_.erase(frame_id);
+  }
+  if(node.curSize()<k_){
+    decltype(fifo_q_.begin()) result;
+    for (auto it=fifo_q_.begin();it!=fifo_q_.end();it++){
+      if(*it==frame_id){
+        result = it;
+        break;
+      }
+    }
+    fifo_q_.erase(result);
+  }
+}
 
 auto LRUKReplacer::Size() -> size_t { return curr_size_; }
 

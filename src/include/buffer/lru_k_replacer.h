@@ -40,12 +40,11 @@ class LRUKNode {
             .count()));
   }
   size_t curSize() { return history_.size(); }
-  explicit LRUKNode(frame_id_t id, size_t k_)
-      : history_{static_cast<unsigned long>(
-            std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch())
-                .count())},
-        k_(k_),
-        fid_(id) {}
+  explicit LRUKNode(frame_id_t id, size_t k_) : k_(k_), is_evictable_(true) {
+    history_.push_back(static_cast<unsigned long>(
+        std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch())
+            .count()));
+  }
 
  private:
   /** History of last seen K timestamps of this page. Least recent timestamp stored in front. */
@@ -53,7 +52,7 @@ class LRUKNode {
 
   std::list<size_t> history_;
   size_t k_{};
-  frame_id_t fid_{};
+  //  frame_id_t fid_{};
   bool is_evictable_{false};
   friend class LRUKReplacer;
 };

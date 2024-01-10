@@ -40,8 +40,10 @@ auto LRUKReplacer::Evict(frame_id_t *frame_id) -> bool {
       it++;
     }
     if (it != fifo_q_.end()) {
+      *frame_id = *it;
       fifo_q_.erase(it);
       curr_size_--;
+      node_store_.erase(*frame_id);
       latch_.unlock();
       return true;
     }
@@ -54,7 +56,10 @@ auto LRUKReplacer::Evict(frame_id_t *frame_id) -> bool {
       it++;
     }
     if (it != k_lru_q_.end()) {
+      *frame_id = *it;
       k_lru_q_.erase(it);
+      node_2_lur_.erase(*frame_id);
+      node_store_.erase(*frame_id);
       curr_size_--;
       latch_.unlock();
       return true;
@@ -71,12 +76,12 @@ void LRUKReplacer::RecordAccess(frame_id_t frame_id, [[maybe_unused]] AccessType
   latch_.lock();
   if (node_store_.count(frame_id) == 0) {
     curr_size_++;
-    node_store_[frame_id] = LRUKNode(frame_id, k_);
+    auto node = LRUKNode(frame_id, k_);
+    node_store_[frame_id] = node;
     fifo_q_.push_back(frame_id);
     if (curr_size_ > replacer_size_) {
-      auto *id = new frame_id_t;
-      Evict(id);
-      delete id;
+      frame_id_t id;
+      Evict(&id);
     }
   } else {
     auto old_size = node_store_[frame_id].curSize();
@@ -88,14 +93,17 @@ void LRUKReplacer::RecordAccess(frame_id_t frame_id, [[maybe_unused]] AccessType
         // 需要将lru的节点进行更新
         auto it = node_2_lur_[frame_id];
         auto r = k_lru_q_.erase(it);
-        decltype(it) p;
+        decltype(it) p = k_lru_q_.end();
         for (auto c = r; c != k_lru_q_.end(); c++) {
-          if (node_store_[*c].history_.front() > node_store_[frame_id].history_.front()) {
+          auto curNode = node_store_[*c];
+          auto pNode = node_store_[frame_id];
+          if (curNode.history_.front() >= pNode.history_.front()) {
             p = c;
             break;
           }
         }
-        k_lru_q_.insert(it, frame_id);
+        k_lru_q_.insert(p, frame_id);
+        node_2_lur_[frame_id] = p;
 
       } else {
         // 从fifoqq迁移到lru
@@ -108,6 +116,8 @@ void LRUKReplacer::RecordAccess(frame_id_t frame_id, [[maybe_unused]] AccessType
         }
         fifo_q_.erase(res);
         k_lru_q_.push_back(frame_id);
+        node_2_lur_[frame_id] = k_lru_q_.end();
+        node_2_lur_[frame_id]--;
       }
     }
   }
@@ -124,9 +134,9 @@ void LRUKReplacer::SetEvictable(frame_id_t frame_id, bool set_evictable) {
   }
   if (!node_store_[frame_id].is_evictable_ && set_evictable) {
     curr_size_++;
-    node_store_[frame_id].is_evictable_ = set_evictable;
-    latch_.unlock();
   }
+  node_store_[frame_id].is_evictable_ = set_evictable;
+  latch_.unlock();
 }
 
 void LRUKReplacer::Remove(frame_id_t frame_id) {

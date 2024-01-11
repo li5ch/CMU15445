@@ -22,9 +22,6 @@ BufferPoolManager::BufferPoolManager(size_t pool_size, DiskManager *disk_manager
                                      LogManager *log_manager)
     : pool_size_(pool_size), disk_manager_(disk_manager), log_manager_(log_manager) {
   // TODO(students): remove this line after you have implemented the buffer pool manager
-  throw NotImplementedException(
-      "BufferPoolManager is not implemented yet. If you have finished implementing BPM, please remove the throw "
-      "exception line in `buffer_pool_manager.cpp`.");
 
   // we allocate a consecutive memory space for the buffer pool
   pages_ = new Page[pool_size_];
@@ -37,8 +34,30 @@ BufferPoolManager::BufferPoolManager(size_t pool_size, DiskManager *disk_manager
 }
 
 BufferPoolManager::~BufferPoolManager() { delete[] pages_; }
-
-auto BufferPoolManager::NewPage(page_id_t *page_id) -> Page * { return nullptr; }
+/**
+ * TODO(P1): Add implementation
+ *
+ * @brief Create a new page in the buffer pool. Set page_id to the new page's id, or nullptr if all frames
+ * are currently in use and not evictable (in another word, pinned).
+ *
+ * You should pick the replacement frame from either the free list or the replacer (always find from the free list
+ * first), and then call the AllocatePage() method to get a new page id. If the replacement frame has a dirty page,
+ * you should write it back to the disk first. You also need to reset the memory and metadata for the new page.
+ *
+ * Remember to "Pin" the frame by calling replacer.SetEvictable(frame_id, false)
+ * so that the replacer wouldn't evict the frame before the buffer pool manager "Unpin"s it.
+ * Also, remember to record the access history of the frame in the replacer for the lru-k algorithm to work.
+ *
+ * @param[out] page_id id of created page
+ * @return nullptr if no new pages could be created, otherwise pointer to new page
+ */
+auto BufferPoolManager::NewPage(page_id_t *page_id) -> Page * {
+  int a;
+  if (!free_list_.empty()) {
+    auto
+  }
+  return nullptr;
+}
 
 auto BufferPoolManager::FetchPage(page_id_t page_id, [[maybe_unused]] AccessType access_type) -> Page * {
   return nullptr;

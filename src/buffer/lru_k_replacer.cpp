@@ -35,15 +35,16 @@ LRUKReplacer::LRUKReplacer(size_t num_frames, size_t k) : replacer_size_(num_fra
 auto LRUKReplacer::Evict(frame_id_t *frame_id) -> bool {
   latch_.lock();
   if (!fifo_q_.empty()) {
-    auto it = fifo_q_.begin();
-    while (it != fifo_q_.end() && !node_store_[*it].is_evictable_) {
+    auto it = fifo_q_.rbegin();
+    while (it != fifo_q_.rend() && !node_store_[*it].is_evictable_) {
       it++;
     }
-    if (it != fifo_q_.end()) {
+    if (it != fifo_q_.rend()) {
       *frame_id = *it;
-      fifo_q_.erase(it);
+      fifo_q_.erase(std::next(it).base());
       curr_size_--;
       node_store_.erase(*frame_id);
+      node_2_lur_.erase(*frame_id);
       latch_.unlock();
       return true;
     }
@@ -78,17 +79,12 @@ void LRUKReplacer::RecordAccess(frame_id_t frame_id, [[maybe_unused]] AccessType
     curr_size_++;
     auto node = LRUKNode(frame_id, k_);
     node_store_[frame_id] = node;
-    fifo_q_.push_back(frame_id);
-    if (curr_size_ > replacer_size_) {
-      frame_id_t id;
-      Evict(&id);
-    }
+    fifo_q_.emplace_front(frame_id);
+    node_2_lur_[frame_id] = fifo_q_.begin();
   } else {
     auto old_size = node_store_[frame_id].curSize();
     node_store_[frame_id].add();
-    if (node_store_[frame_id].curSize() < k_) {
-      fifo_q_.push_back(frame_id);
-    } else {
+    {
       if (old_size == k_) {
         // 需要将lru的节点进行更新
         auto it = node_2_lur_[frame_id];
@@ -97,24 +93,17 @@ void LRUKReplacer::RecordAccess(frame_id_t frame_id, [[maybe_unused]] AccessType
         for (auto c = r; c != k_lru_q_.end(); c++) {
           auto curNode = node_store_[*c];
           auto pNode = node_store_[frame_id];
-          if (curNode.history_.front() >= pNode.history_.front()) {
+          if (curNode.history_.front() > pNode.history_.front()) {
             p = c;
             break;
           }
         }
-        k_lru_q_.insert(p, frame_id);
-        node_2_lur_[frame_id] = p;
+        auto res = k_lru_q_.insert(p, frame_id);
+        node_2_lur_[frame_id] = res;
 
       } else {
         // 从fifoqq迁移到lru
-        std::list<frame_id_t>::iterator res;
-        for (auto it = fifo_q_.begin(); it != fifo_q_.end(); it++) {
-          if (*it == frame_id) {
-            res = it;
-            break;
-          }
-        }
-        fifo_q_.erase(res);
+        fifo_q_.erase(node_2_lur_[frame_id]);
         k_lru_q_.push_back(frame_id);
         node_2_lur_[frame_id] = k_lru_q_.end();
         node_2_lur_[frame_id]--;

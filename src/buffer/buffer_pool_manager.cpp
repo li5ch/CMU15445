@@ -52,10 +52,24 @@ BufferPoolManager::~BufferPoolManager() { delete[] pages_; }
  * @return nullptr if no new pages could be created, otherwise pointer to new page
  */
 auto BufferPoolManager::NewPage(page_id_t *page_id) -> Page * {
-  int a;
   if (!free_list_.empty()) {
-    auto
+    auto c = free_list_.front();
+    free_list_.pop_front();
+    *page_id = AllocatePage();
+    page_table_[*page_id] = c;
+    replacer_->RecordAccess(c, AccessType::Unknown);
+    replacer_->SetEvictable(c, false);
+  } else {
+    frame_id_t id;
+    auto c = replacer_->Evict(&id);
+    if (c) {
+    } else {
+      return nullptr;
+    }
   }
+
+  auto page = NewPage(page_id);
+  return page;
   return nullptr;
 }
 

@@ -80,6 +80,7 @@ class Page {
  private:
   /** Zeroes out the data that is held within the page. */
   inline void ResetMemory() { memset(data_, OFFSET_PAGE_START, BUSTUB_PAGE_SIZE); }
+  inline void ResetPage() {page_id_= INVALID_PAGE_ID;pin_count_= 0;is_dirty_ = false;}
 
   /** The actual data that is stored within a page. */
   // Usually this should be stored as `char data_[BUSTUB_PAGE_SIZE]{};`. But to enable ASAN to detect page overflow,

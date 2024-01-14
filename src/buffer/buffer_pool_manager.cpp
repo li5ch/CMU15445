@@ -59,17 +59,33 @@ auto BufferPoolManager::NewPage(page_id_t *page_id) -> Page * {
     page_table_[*page_id] = c;
     replacer_->RecordAccess(c, AccessType::Unknown);
     replacer_->SetEvictable(c, false);
+    *page_id = AllocatePage();
+    Page *page= new Page();
+    page->page_id_ = *page_id;
+    page->pin_count_=1;
+    return page;
   } else {
     frame_id_t id;
     auto c = replacer_->Evict(&id);
     if (c) {
+      if (pages_[id].is_dirty_) {
+        disk_manager_->WritePage(id,pages_[id].GetData());
+        pages_[id].ResetMemory();
+        page_table_.erase(pages_[id].page_id_);
+      }
+      *page_id = AllocatePage();
+      page_table_[*page_id] = c;
+      replacer_->RecordAccess(c, AccessType::Unknown);
+      replacer_->SetEvictable(c, false);
+      *page_id = AllocatePage();
+      Page *page= new Page();
+      page->page_id_ = *page_id;
+      page->pin_count_=1;
+      return page;
     } else {
       return nullptr;
     }
   }
-
-  auto page = NewPage(page_id);
-  return page;
   return nullptr;
 }
 
@@ -77,8 +93,32 @@ auto BufferPoolManager::FetchPage(page_id_t page_id, [[maybe_unused]] AccessType
   return nullptr;
 }
 
+
+/**
+   * TODO(P1): Add implementation
+   *
+   * @brief Unpin the target page from the buffer pool. If page_id is not in the buffer pool or its pin count is already
+   * 0, return false.
+   *
+   * Decrement the pin count of a page. If the pin count reaches 0, the frame should be evictable by the replacer.
+   * Also, set the dirty flag on the page to indicate if the page was modified.
+   *
+   * @param page_id id of page to be unpinned
+   * @param is_dirty true if the page should be marked as dirty, false otherwise
+   * @param access_type type of access to the page, only needed for leaderboard tests.
+   * @return false if the page is not in the page table or its pin count is <= 0 before this call, true otherwise
+ */
+
 auto BufferPoolManager::UnpinPage(page_id_t page_id, bool is_dirty, [[maybe_unused]] AccessType access_type) -> bool {
-  return false;
+  if(page_table_.count(page_id)==0||pages_[page_table_[page_id]].pin_count_==0) return false;
+  auto fid = page_table_[page_id];
+  pages_[fid].pin_count_--;
+  if(pages_[fid].pin_count_==0){
+    replacer_->SetEvictable(fid,true);
+    pages_[fid].is_dirty_ = is_dirty;
+
+  }
+  return true;
 }
 
 auto BufferPoolManager::FlushPage(page_id_t page_id) -> bool { return false; }

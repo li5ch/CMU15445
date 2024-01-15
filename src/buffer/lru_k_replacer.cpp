@@ -48,8 +48,6 @@ auto LRUKReplacer::Evict(frame_id_t *frame_id) -> bool {
       latch_.unlock();
       return true;
     }
-    latch_.unlock();
-    return false;
   }
   if (!k_lru_q_.empty()) {
     auto it = k_lru_q_.begin();
@@ -65,8 +63,6 @@ auto LRUKReplacer::Evict(frame_id_t *frame_id) -> bool {
       latch_.unlock();
       return true;
     }
-    latch_.unlock();
-    return false;
   }
   latch_.unlock();
   return false;
@@ -84,30 +80,29 @@ void LRUKReplacer::RecordAccess(frame_id_t frame_id, [[maybe_unused]] AccessType
   } else {
     auto old_size = node_store_[frame_id].curSize();
     node_store_[frame_id].add();
-    {
-      if (old_size == k_) {
-        // 需要将lru的节点进行更新
-        auto it = node_2_lur_[frame_id];
-        auto r = k_lru_q_.erase(it);
-        decltype(it) p = k_lru_q_.end();
-        for (auto c = r; c != k_lru_q_.end(); c++) {
-          auto curNode = node_store_[*c];
-          auto pNode = node_store_[frame_id];
-          if (curNode.history_.front() > pNode.history_.front()) {
-            p = c;
-            break;
-          }
-        }
-        auto res = k_lru_q_.insert(p, frame_id);
-        node_2_lur_[frame_id] = res;
 
-      } else {
-        // 从fifoqq迁移到lru
-        fifo_q_.erase(node_2_lur_[frame_id]);
-        k_lru_q_.push_back(frame_id);
-        node_2_lur_[frame_id] = k_lru_q_.end();
-        node_2_lur_[frame_id]--;
+    if (old_size == k_) {
+      // 需要将lru的节点进行更新
+      auto it = node_2_lur_[frame_id];
+      auto r = k_lru_q_.erase(it);
+      decltype(it) p = k_lru_q_.end();
+      for (auto c = r; c != k_lru_q_.end(); c++) {
+        auto curNode = node_store_[*c];
+        auto pNode = node_store_[frame_id];
+        if (curNode.history_.front() > pNode.history_.front()) {
+          p = c;
+          break;
+        }
       }
+      auto res = k_lru_q_.insert(p, frame_id);
+      node_2_lur_[frame_id] = res;
+
+    } else {
+      // 从fifoqq迁移到lru
+      fifo_q_.erase(node_2_lur_[frame_id]);
+      k_lru_q_.push_back(frame_id);
+      node_2_lur_[frame_id] = k_lru_q_.end();
+      node_2_lur_[frame_id]--;
     }
   }
   latch_.unlock();
@@ -129,24 +124,17 @@ void LRUKReplacer::SetEvictable(frame_id_t frame_id, bool set_evictable) {
 }
 
 void LRUKReplacer::Remove(frame_id_t frame_id) {
-  if(node_store_.count(frame_id)==0)return;
-  if(!node_store_[frame_id].is_evictable_) throw bustub::Exception("invalid frame id");
+  if (node_store_.count(frame_id) == 0) return;
+  if (!node_store_[frame_id].is_evictable_) throw bustub::Exception("invalid frame id");
   auto node = node_store_[frame_id];
-  if(node.curSize()==k_){
-    auto it = node_2_lur_[frame_id];
+  node_store_.erase(frame_id);
+  auto it = node_2_lur_[frame_id];
+  node_2_lur_.erase(frame_id);
+  if (node.curSize() == k_) {
     k_lru_q_.erase(it);
-    node_2_lur_.erase(frame_id);
-    node_store_.erase(frame_id);
   }
-  if(node.curSize()<k_){
-    decltype(fifo_q_.begin()) result;
-    for (auto it=fifo_q_.begin();it!=fifo_q_.end();it++){
-      if(*it==frame_id){
-        result = it;
-        break;
-      }
-    }
-    fifo_q_.erase(result);
+  if (node.curSize() < k_) {
+    fifo_q_.erase(it);
   }
 }
 

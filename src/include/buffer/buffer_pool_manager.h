@@ -103,6 +103,7 @@ class BufferPoolManager {
    * @return nullptr if page_id cannot be fetched, otherwise pointer to the requested page
    */
   auto FetchPage(page_id_t page_id, AccessType access_type = AccessType::Unknown) -> Page *;
+  auto CreatePage(page_id_t page_id) -> Page *;
 
   /**
    * TODO(P1): Add implementation

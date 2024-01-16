@@ -82,6 +82,8 @@ auto BufferPoolManager::NewPage(page_id_t *page_id) -> Page * {
 auto BufferPoolManager::FetchPage(page_id_t page_id, [[maybe_unused]] AccessType access_type) -> Page * {
   if (page_table_.count(page_id) == 0) {
     auto page = CreatePage(page_id);
+    if (!page) return nullptr;
+    disk_manager_->ReadPage(page_id, page->data_);
     return page;
   } else {
     auto c = page_table_[page_id];
@@ -208,12 +210,12 @@ auto BufferPoolManager::CreatePage(page_id_t page_id) -> Page * {
         pages_[id].ResetMemory();
         page_table_.erase(pages_[id].page_id_);
       }
-      page_table_[page_id] = c;
-      replacer_->RecordAccess(c, AccessType::Unknown);
-      replacer_->SetEvictable(c, false);
-      pages_[c].page_id_ = page_id;
-      pages_[c].pin_count_ = 1;
-      return &pages_[c];
+      page_table_[page_id] = id;
+      replacer_->RecordAccess(id, AccessType::Unknown);
+      replacer_->SetEvictable(id, false);
+      pages_[id].page_id_ = page_id;
+      pages_[id].pin_count_ = 1;
+      return &pages_[id];
     } else {
       return nullptr;
     }

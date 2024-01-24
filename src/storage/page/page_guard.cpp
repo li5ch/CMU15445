@@ -5,8 +5,11 @@ namespace bustub {
 
 BasicPageGuard::BasicPageGuard(BasicPageGuard &&that) noexcept {
   bpm_ = that.bpm_;
+  is_dirty_ = that.is_dirty_;
   page_ = that.page_;
+
   that.bpm_ = nullptr;
+  that.is_dirty_ = false;
   that.page_ = nullptr;
 }
 

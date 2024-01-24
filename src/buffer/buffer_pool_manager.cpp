@@ -53,7 +53,9 @@ BufferPoolManager::~BufferPoolManager() { delete[] pages_; }
  */
 auto BufferPoolManager::NewPage(page_id_t *page_id) -> Page * {
   *page_id = AllocatePage();
+  latch_.lock();
   auto page = CreatePage(*page_id);
+  latch_.unlock();
   if (page == nullptr) {
     next_page_id_--;
     return nullptr;
@@ -80,14 +82,22 @@ auto BufferPoolManager::NewPage(page_id_t *page_id) -> Page * {
  */
 
 auto BufferPoolManager::FetchPage(page_id_t page_id, [[maybe_unused]] AccessType access_type) -> Page * {
+  latch_.lock();
   if (page_table_.count(page_id) == 0) {
     auto page = CreatePage(page_id);
+    if (!page) {
+      latch_.unlock();
+      return nullptr;
+    }
+    disk_manager_->ReadPage(page_id, page->data_);
+    latch_.unlock();
     return page;
   } else {
     auto c = page_table_[page_id];
     replacer_->RecordAccess(c, AccessType::Unknown);
     replacer_->SetEvictable(c, false);
     pages_[page_table_[page_id]].pin_count_++;
+    latch_.unlock();
     return &pages_[page_table_[page_id]];
   }
 }
@@ -108,6 +118,7 @@ auto BufferPoolManager::FetchPage(page_id_t page_id, [[maybe_unused]] AccessType
  */
 
 auto BufferPoolManager::UnpinPage(page_id_t page_id, bool is_dirty, [[maybe_unused]] AccessType access_type) -> bool {
+  latch_.lock();
   if (page_table_.count(page_id) == 0 || pages_[page_table_[page_id]].pin_count_ == 0) return false;
   auto fid = page_table_[page_id];
   pages_[fid].pin_count_--;
@@ -115,6 +126,7 @@ auto BufferPoolManager::UnpinPage(page_id_t page_id, bool is_dirty, [[maybe_unus
     replacer_->SetEvictable(fid, true);
     pages_[fid].is_dirty_ = is_dirty;
   }
+  latch_.unlock();
   return true;
 }
 /**
@@ -129,9 +141,11 @@ auto BufferPoolManager::UnpinPage(page_id_t page_id, bool is_dirty, [[maybe_unus
  * @return false if the page could not be found in the page table, true otherwise
  */
 auto BufferPoolManager::FlushPage(page_id_t page_id) -> bool {
+  latch_.lock();
   if (!page_table_.count(page_id)) return false;
   disk_manager_->WritePage(page_id, pages_[page_table_[page_id]].GetData());
   pages_[page_table_[page_id]].is_dirty_ = false;
+  latch_.unlock();
   return true;
 }
 
@@ -141,11 +155,13 @@ auto BufferPoolManager::FlushPage(page_id_t page_id) -> bool {
  * @brief Flush all the pages in the buffer pool to disk.
  */
 void BufferPoolManager::FlushAllPages() {
+  latch_.lock();
   for (int i = 0; i < int(pool_size_); ++i) {
     if (pages_[i].IsDirty()) {
       FlushPage(pages_[i].page_id_);
     }
   }
+  latch_.unlock();
 }
 
 /**
@@ -162,11 +178,14 @@ void BufferPoolManager::FlushAllPages() {
  * @return false if the page exists but could not be deleted, true if the page didn't exist or deletion succeeded
  */
 auto BufferPoolManager::DeletePage(page_id_t page_id) -> bool {
+  latch_.lock();
   if (!page_table_.count(page_id)) {
+    latch_.unlock();
     return true;
   }
   frame_id_t id = page_table_[page_id];
   if (pages_[id].pin_count_ > 0) {
+    latch_.unlock();
     return false;
   }
   page_table_.erase(page_id);
@@ -175,7 +194,7 @@ auto BufferPoolManager::DeletePage(page_id_t page_id) -> bool {
   pages_[id].ResetPage();
   free_list_.push_back(id);
   DeallocatePage(page_id);
-
+  latch_.unlock();
   return false;
 }
 
@@ -221,12 +240,12 @@ auto BufferPoolManager::CreatePage(page_id_t page_id) -> Page * {
         pages_[id].ResetMemory();
         page_table_.erase(pages_[id].page_id_);
       }
-      page_table_[page_id] = c;
-      replacer_->RecordAccess(c, AccessType::Unknown);
-      replacer_->SetEvictable(c, false);
-      pages_[c].page_id_ = page_id;
-      pages_[c].pin_count_ = 1;
-      return &pages_[c];
+      page_table_[page_id] = id;
+      replacer_->RecordAccess(id, AccessType::Unknown);
+      replacer_->SetEvictable(id, false);
+      pages_[id].page_id_ = page_id;
+      pages_[id].pin_count_ = 1;
+      return &pages_[id];
     } else {
       return nullptr;
     }

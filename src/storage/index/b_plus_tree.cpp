@@ -27,8 +27,12 @@ BPLUSTREE_TYPE::BPlusTree(std::string name, page_id_t header_page_id, BufferPool
  */
 INDEX_TEMPLATE_ARGUMENTS
 auto BPLUSTREE_TYPE::IsEmpty() const -> bool {
-
-  return true;
+  WritePageGuard guard = bpm_->FetchPageWrite(header_page_id_);
+  auto root_page = guard.AsMut<BPlusTreeHeaderPage>();
+  if(root_page->root_page_id_==INVALID_PAGE_ID){
+    return true;
+  }
+  return false;
 }
 /*****************************************************************************
  * SEARCH
@@ -43,6 +47,13 @@ auto BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result
   // Declaration of context instance.
   Context ctx;
   (void)ctx;
+  auto root = GetRootPageId();
+  auto readPageGuard = bpm_->FetchPageRead(root);
+  auto page = readPageGuard.template As<InternalPage>();
+  auto i = page->Lookup(key,comparator_);
+  auto value  = page->ValueAt(i);
+
+
   return false;
 }
 
@@ -112,7 +123,11 @@ auto BPLUSTREE_TYPE::End() -> INDEXITERATOR_TYPE { return INDEXITERATOR_TYPE(); 
  * @return Page id of the root of this tree
  */
 INDEX_TEMPLATE_ARGUMENTS
-auto BPLUSTREE_TYPE::GetRootPageId() -> page_id_t { return 0; }
+auto BPLUSTREE_TYPE::GetRootPageId() -> page_id_t {
+  WritePageGuard guard = bpm_->FetchPageWrite(header_page_id_);
+  auto root_page = guard.AsMut<BPlusTreeHeaderPage>();
+  return root_page->root_page_id_;
+}
 
 /*****************************************************************************
  * UTILITIES AND DEBUG

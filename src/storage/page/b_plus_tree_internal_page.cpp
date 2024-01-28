@@ -47,6 +47,28 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::SetKeyAt(int index, const KeyType &key) {
   array_[index].first = key;
 }
 
+INDEX_TEMPLATE_ARGUMENTS
+auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::Lookup(const KeyType &key,const KeyComparator &comparator) const -> int {
+  // 找到key
+  int l=0,r=GetSize()-1;
+  while(l<=r){
+    int mid= (l+r)/2;
+    if(comparator(array_[mid].first,key)==0) return mid;
+    else if(comparator(array_[mid].first,key)<0) l=mid+1;
+    else r=mid-1;
+  }
+  return l;
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::ValueIndex(const ValueType &value) const -> int{
+  for (int i = 0; i < GetSize(); ++i) {
+    if(array_[i].second == value){
+      return i;
+    }
+  }
+  return -1;
+}
 /*
  * Helper method to get the value associated with input "index"(a.k.a array
  * offset)

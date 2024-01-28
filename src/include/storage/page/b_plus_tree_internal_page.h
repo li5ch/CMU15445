@@ -65,7 +65,7 @@ class BPlusTreeInternalPage : public BPlusTreePage {
    * @param value the value to search for
    */
   auto ValueIndex(const ValueType &value) const -> int;
-
+  int Lookup(const KeyType &key, const KeyComparator &comparator) const;
   /**
    *
    * @param index the index
@@ -102,5 +102,6 @@ class BPlusTreeInternalPage : public BPlusTreePage {
  private:
   // Flexible array member for page data.
   MappingType array_[0];
+
 };
 }  // namespace bustub

@@ -49,9 +49,7 @@ auto BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result
   (void)ctx;
   auto root = GetRootPageId();
   auto readPageGuard = bpm_->FetchPageRead(root);
-  auto page = readPageGuard.template As<InternalPage>();
-  auto i = page->Lookup(key,comparator_);
-  auto value  = page->ValueAt(i);
+  auto node = reinterpret_cast<const BPlusTreePage*>(readPageGuard.GetData());
 
 
   return false;

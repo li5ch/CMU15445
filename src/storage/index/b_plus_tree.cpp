@@ -50,7 +50,13 @@ auto BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result
   auto root = GetRootPageId();
   auto readPageGuard = bpm_->FetchPageRead(root);
   auto node = reinterpret_cast<const BPlusTreePage*>(readPageGuard.GetData());
+  while (!node->IsLeafPage()){
+    auto n = reinterpret_cast<const BPlusTreeInternalPage<KeyType,ValueType,KeyComparator>*>(readPageGuard.GetData());
+    int k = n->Lookup(key,comparator_);
+    node = n->ValueAt(k)
 
+
+  }
 
   return false;
 }

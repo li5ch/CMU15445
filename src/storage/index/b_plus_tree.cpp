@@ -4,6 +4,7 @@
 #include "common/exception.h"
 #include "common/logger.h"
 #include "common/rid.h"
+#include "storage/page/b_plus_tree_leaf_page.h"
 #include "storage/index/b_plus_tree.h"
 
 namespace bustub {
@@ -48,14 +49,25 @@ auto BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result
   Context ctx;
   (void)ctx;
   auto root = GetRootPageId();
-  auto readPageGuard = bpm_->FetchPageRead(root);
-  auto node = reinterpret_cast<const BPlusTreePage*>(readPageGuard.GetData());
+  auto read_page_guard = bpm_->FetchPageRead(root);
+  auto node = reinterpret_cast<const BPlusTreePage*>(read_page_guard.GetData());
   while (!node->IsLeafPage()){
-    auto n = reinterpret_cast<const BPlusTreeInternalPage<KeyType,ValueType,KeyComparator>*>(readPageGuard.GetData());
-    int k = n->Lookup(key,comparator_);
-    node = n->ValueAt(k)
+    IN_TREE_INTERNAL_PAGE_TYPE* n = reinterpret_cast<const IN_TREE_INTERNAL_PAGE_TYPE*>(read_page_guard.GetData());
+    int pos;
+    bool res = n->Lookup( key,comparator_,pos);
+    if(res){
+     read_page_guard = bpm_->FetchPageRead(static_cast<page_id_t>( n->ValueAt(pos)));
+     node = reinterpret_cast<const BPlusTreePage*>(read_page_guard.GetData());
+    }else{
+      read_page_guard = bpm_->FetchPageRead(n->ValueAt(0));
+      node = reinterpret_cast<const BPlusTreePage*>(read_page_guard.GetData());
+    }
+    
 
-
+  }
+  if(node->IsLeafPage()){
+    node =  reinterpret_cast<const BPlusTreeLeafPage< KeyType,  ValueType, KeyComparator>*>(read_page_guard.GetData());
+    
   }
 
   return false;

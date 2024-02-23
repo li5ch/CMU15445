@@ -58,6 +58,7 @@ class BPlusTreeLeafPage : public BPlusTreePage {
   auto GetNextPageId() const -> page_id_t;
   void SetNextPageId(page_id_t next_page_id);
   auto KeyAt(int index) const -> KeyType;
+  auto Lookup(const KeyType& keyType,const KeyComparator& comparator,int &l)const->bool;
 
   /**
    * @brief for test only return a string representing all keys in

@@ -48,16 +48,15 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::SetKeyAt(int index, const KeyType &key) {
 }
 
 INDEX_TEMPLATE_ARGUMENTS
-auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::Lookup(const KeyType &key,const KeyComparator &comparator) const -> int {
+auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::Lookup(const KeyType &key,const KeyComparator &comparator,int &l) const -> bool {
   // 找到key
-  int l=0,r=GetSize()-1;
+  l=1;int r=GetSize()-1;
   while(l<=r){
     int mid= (l+r)/2;
-    if(comparator(array_[mid].first,key)==0) return mid;
-    else if(comparator(array_[mid].first,key)<0) l=mid+1;
+    if(comparator(array_[mid].first,key)<=0) l=mid;
     else r=mid-1;
   }
-  return l;
+  return l <= r;
 }
 
 INDEX_TEMPLATE_ARGUMENTS

@@ -59,7 +59,7 @@ class BPlusTreeLeafPage : public BPlusTreePage {
   void SetNextPageId(page_id_t next_page_id);
   auto KeyAt(int index) const -> KeyType;
   auto Lookup(const KeyType &keyType, const KeyComparator &comparator, int &l) const -> bool;
-  auto Insert(const KeyType &key, const ValueType &value, const KeyComparator &comparator);
+  void Insert(const KeyType &key, const ValueType &value, const KeyComparator &comparator);
 
   /**
    * @brief for test only return a string representing all keys in

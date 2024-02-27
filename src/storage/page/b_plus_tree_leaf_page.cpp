@@ -65,7 +65,7 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::Lookup(const KeyType &keyType, const KeyCompara
   return l <= r;
 }
 INDEX_TEMPLATE_ARGUMENTS
-auto B_PLUS_TREE_LEAF_PAGE_TYPE::Insert(const KeyType &key, const ValueType &value, const KeyComparator &comparator) {
+void B_PLUS_TREE_LEAF_PAGE_TYPE::Insert(const KeyType &key, const ValueType &value, const KeyComparator &comparator) {
   int idx;
   Lookup(key, comparator, idx);
   for (int i = idx + 1; i < GetSize(); i++) {

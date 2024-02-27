@@ -4,8 +4,8 @@
 #include "common/exception.h"
 #include "common/logger.h"
 #include "common/rid.h"
-#include "storage/page/b_plus_tree_leaf_page.h"
 #include "storage/index/b_plus_tree.h"
+#include "storage/page/b_plus_tree_leaf_page.h"
 
 namespace bustub {
 
@@ -18,23 +18,16 @@ BPLUSTREE_TYPE::BPlusTree(std::string name, page_id_t header_page_id, BufferPool
       leaf_max_size_(leaf_max_size),
       internal_max_size_(internal_max_size),
       header_page_id_(header_page_id) {
-  WritePageGuard guard = bpm_->FetchPageWrite(header_page_id_);
-  auto root_page = guard.AsMut<BPlusTreeHeaderPage>();
-  root_page->root_page_id_ = INVALID_PAGE_ID;
+  //  WritePageGuard guard = bpm_->FetchPageWrite(header_page_id_);
+  //  auto root_page = guard.AsMut<BPlusTreeHeaderPage>();
+  //  root_page_id_ = root_page->root_page_id_;
 }
 
 /*
  * Helper function to decide whether current b+tree is empty
  */
 INDEX_TEMPLATE_ARGUMENTS
-auto BPLUSTREE_TYPE::IsEmpty() const -> bool {
-  WritePageGuard guard = bpm_->FetchPageWrite(header_page_id_);
-  auto root_page = guard.AsMut<BPlusTreeHeaderPage>();
-  if(root_page->root_page_id_==INVALID_PAGE_ID){
-    return true;
-  }
-  return false;
-}
+auto BPLUSTREE_TYPE::IsEmpty() const -> bool { return root_page_id_ == INVALID_PAGE_ID; }
 /*****************************************************************************
  * SEARCH
  *****************************************************************************/
@@ -50,24 +43,21 @@ auto BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result
   (void)ctx;
   auto root = GetRootPageId();
   auto read_page_guard = bpm_->FetchPageRead(root);
-  auto node = reinterpret_cast<const BPlusTreePage*>(read_page_guard.GetData());
-  while (!node->IsLeafPage()){
-    IN_TREE_INTERNAL_PAGE_TYPE* n = reinterpret_cast<const IN_TREE_INTERNAL_PAGE_TYPE*>(read_page_guard.GetData());
+  auto node = reinterpret_cast<const BPlusTreePage *>(read_page_guard.GetData());
+  while (!node->IsLeafPage()) {
+    auto n = reinterpret_cast<const IN_TREE_INTERNAL_PAGE_TYPE *>(read_page_guard.GetData());
     int pos;
-    bool res = n->Lookup( key,comparator_,pos);
-    if(res){
-     read_page_guard = bpm_->FetchPageRead(static_cast<page_id_t>( n->ValueAt(pos)));
-     node = reinterpret_cast<const BPlusTreePage*>(read_page_guard.GetData());
-    }else{
+    bool res = n->Lookup(key, comparator_, pos);
+    if (res) {
+      read_page_guard = bpm_->FetchPageRead(static_cast<page_id_t>(n->ValueAt(pos)));
+      node = reinterpret_cast<const BPlusTreePage *>(read_page_guard.GetData());
+    } else {
       read_page_guard = bpm_->FetchPageRead(n->ValueAt(0));
-      node = reinterpret_cast<const BPlusTreePage*>(read_page_guard.GetData());
+      node = reinterpret_cast<const BPlusTreePage *>(read_page_guard.GetData());
     }
-    
-
   }
-  if(node->IsLeafPage()){
-    node =  reinterpret_cast<const BPlusTreeLeafPage< KeyType,  ValueType, KeyComparator>*>(read_page_guard.GetData());
-    
+  if (node->IsLeafPage()) {
+    node = reinterpret_cast<const BPlusTreeLeafPage<KeyType, ValueType, KeyComparator> *>(read_page_guard.GetData());
   }
 
   return false;
@@ -88,6 +78,14 @@ auto BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transact
   // Declaration of context instance.
   Context ctx;
   (void)ctx;
+  if (IsEmpty()) {
+    page_id_t pageId;
+    auto page = bpm_->NewPage(&pageId);
+    //    WritePageGuard guard = bpm_->FetchPageWrite(pageId);
+    auto root_page_leaf = reinterpret_cast<B_PLUS_TREE_LEAF_PAGE_TYPE *>(page->GetData());
+    root_page_leaf->Init(1);
+    root_page_leaf->Insert(key, value, comparator_);
+  }
   return false;
 }
 
@@ -139,11 +137,7 @@ auto BPLUSTREE_TYPE::End() -> INDEXITERATOR_TYPE { return INDEXITERATOR_TYPE(); 
  * @return Page id of the root of this tree
  */
 INDEX_TEMPLATE_ARGUMENTS
-auto BPLUSTREE_TYPE::GetRootPageId() -> page_id_t {
-  WritePageGuard guard = bpm_->FetchPageWrite(header_page_id_);
-  auto root_page = guard.AsMut<BPlusTreeHeaderPage>();
-  return root_page->root_page_id_;
-}
+auto BPLUSTREE_TYPE::GetRootPageId() -> page_id_t { return root_page_id_; }
 
 /*****************************************************************************
  * UTILITIES AND DEBUG

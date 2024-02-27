@@ -39,9 +39,7 @@ INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_LEAF_PAGE_TYPE::GetNextPageId() const -> page_id_t { return next_page_id_; }
 
 INDEX_TEMPLATE_ARGUMENTS
-void B_PLUS_TREE_LEAF_PAGE_TYPE::SetNextPageId(page_id_t next_page_id) {
-  next_page_id_ = next_page_id;
-}
+void B_PLUS_TREE_LEAF_PAGE_TYPE::SetNextPageId(page_id_t next_page_id) { next_page_id_ = next_page_id; }
 
 /*
  * Helper method to find and return the key associated with input "index"(a.k.a
@@ -54,8 +52,28 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::KeyAt(int index) const -> KeyType {
 }
 
 INDEX_TEMPLATE_ARGUMENTS
-auto B_PLUS_TREE_LEAF_PAGE_TYPE::Lookup(const KeyType& keyType,const KeyComparator& comparator,int &l) const -> bool {
-  
+auto B_PLUS_TREE_LEAF_PAGE_TYPE::Lookup(const KeyType &keyType, const KeyComparator &comparator, int &l) const -> bool {
+  l = 0;
+  int r = GetSize() - 1;
+  while (l < r) {
+    int mid = (l + r) / 2;
+    if (comparator(array_[mid].first, keyType) <= 0)
+      l = mid;
+    else
+      r = mid - 1;
+  }
+  return l <= r;
+}
+INDEX_TEMPLATE_ARGUMENTS
+auto B_PLUS_TREE_LEAF_PAGE_TYPE::Insert(const KeyType &key, const ValueType &value, const KeyComparator &comparator) {
+  int idx;
+  Lookup(key, comparator, idx);
+  for (int i = idx + 1; i < GetSize(); i++) {
+    array_[i].first = array_[i - 1].first;
+    array_[i].second = array_[i - 1].second;
+  }
+  array_[idx].first = key;
+  array_[idx].second = value;
 }
 
 template class BPlusTreeLeafPage<GenericKey<4>, RID, GenericComparator<4>>;

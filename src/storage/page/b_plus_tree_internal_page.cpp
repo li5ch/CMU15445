@@ -25,9 +25,9 @@ namespace bustub {
  */
 INDEX_TEMPLATE_ARGUMENTS
 void B_PLUS_TREE_INTERNAL_PAGE_TYPE::Init(int max_size) {
-    SetSize(0);
-    SetPageType(IndexPageType::INTERNAL_PAGE);
-    SetMaxSize(max_size);
+  SetSize(0);
+  SetPageType(IndexPageType::INTERNAL_PAGE);
+  SetMaxSize(max_size);
 }
 /*
  * Helper method to get/set the key associated with input "index"(a.k.a
@@ -43,26 +43,53 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::KeyAt(int index) const -> KeyType {
 }
 
 INDEX_TEMPLATE_ARGUMENTS
-void B_PLUS_TREE_INTERNAL_PAGE_TYPE::SetKeyAt(int index, const KeyType &key) {
-  array_[index].first = key;
-}
+void B_PLUS_TREE_INTERNAL_PAGE_TYPE::SetKeyAt(int index, const KeyType &key) { array_[index].first = key; }
 
 INDEX_TEMPLATE_ARGUMENTS
-auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::Lookup(const KeyType &key,const KeyComparator &comparator,int &l) const -> bool {
-  // 找到key
-  l=1;int r=GetSize()-1;
-  while(l<=r){
-    int mid= (l+r)/2;
-    if(comparator(array_[mid].first,key)<=0) l=mid;
-    else r=mid-1;
+void B_PLUS_TREE_INTERNAL_PAGE_TYPE::CopyDataByIndex(int index, MappingType *array) {
+  for (int i = index; i < GetSize(); ++i) {
+    array_[i] = array[i];
   }
-  return l <= r;
 }
 
 INDEX_TEMPLATE_ARGUMENTS
-auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::ValueIndex(const ValueType &value) const -> int{
+void B_PLUS_TREE_INTERNAL_PAGE_TYPE::Insert(const KeyType &key, const ValueType &value,
+                                            const KeyComparator &comparator) {
+  int idx;
+  Lookup(key, comparator, idx);
+  if (comparator(array_[idx].first, key) == 0) {
+    array_[idx].second = value;
+    return;
+  }
+  for (int i = idx + 1; i < GetSize(); i++) {
+    array_[i].first = array_[i - 1].first;
+    array_[i].second = array_[i - 1].second;
+  }
+  array_[idx].first = key;
+  array_[idx].second = value;
+  IncreaseSize(1);
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::Lookup(const KeyType &key, const KeyComparator &comparator, int &ans) const
+    -> bool {
+  int l = 0;
+  int r = GetSize() - 1;
+  while (l <= r) {
+    int mid = (l + r) >> 1;
+    if (comparator(array_[mid].first, key) < 0)
+      l = mid + 1;
+    else
+      r = mid;
+  }
+  ans = l;
+  return false;
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::ValueIndex(const ValueType &value) const -> int {
   for (int i = 0; i < GetSize(); ++i) {
-    if(array_[i].second == value){
+    if (array_[i].second == value) {
       return i;
     }
   }
@@ -73,9 +100,7 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::ValueIndex(const ValueType &value) const ->
  * offset)
  */
 INDEX_TEMPLATE_ARGUMENTS
-auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::ValueAt(int index) const -> ValueType {
-  return array_[index].second;
-}
+auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::ValueAt(int index) const -> ValueType { return array_[index].second; }
 
 // valuetype for internalNode should be page id_t
 template class BPlusTreeInternalPage<GenericKey<4>, page_id_t, GenericComparator<4>>;

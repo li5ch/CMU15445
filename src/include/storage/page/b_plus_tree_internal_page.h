@@ -59,13 +59,14 @@ class BPlusTreeInternalPage : public BPlusTreePage {
    * @param key The new value for key
    */
   void SetKeyAt(int index, const KeyType &key);
-
+  void CopyDataByIndex(int index, MappingType *array);
+  void Insert(const KeyType &key, const ValueType &value, const KeyComparator &comparator);
   /**
    *
    * @param value the value to search for
    */
   auto ValueIndex(const ValueType &value) const -> int;
- auto Lookup(const KeyType &key,const KeyComparator &comparator,int &l) const -> bool;
+  auto Lookup(const KeyType &key, const KeyComparator &comparator, int &l) const -> bool;
   /**
    *
    * @param index the index
@@ -102,6 +103,5 @@ class BPlusTreeInternalPage : public BPlusTreePage {
  private:
   // Flexible array member for page data.
   MappingType array_[0];
-
 };
 }  // namespace bustub

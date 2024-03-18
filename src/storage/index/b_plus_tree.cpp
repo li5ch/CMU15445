@@ -57,10 +57,43 @@ auto BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result
     }
   }
   if (node->IsLeafPage()) {
-    node = reinterpret_cast<const BPlusTreeLeafPage<KeyType, ValueType, KeyComparator> *>(read_page_guard.GetData());
+    auto n = reinterpret_cast<const B_PLUS_TREE_LEAF_PAGE_TYPE *>(read_page_guard.GetData());
+    int l;
+    n->Lookup(key, comparator_, l);
+    if (comparator_(key, n->KeyAt(l)) == 0) {
+      return true;
+    } else {
+      result->emplace_back(n->ValueAt(l));
+    }
   }
-
   return false;
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+auto BPLUSTREE_TYPE::Lookup(const KeyType &key) -> B_PLUS_TREE_LEAF_PAGE_TYPE * {
+  // Declaration of context instance.
+  Context ctx;
+  (void)ctx;
+  auto root = GetRootPageId();
+  auto read_page_guard = bpm_->FetchPage(root);
+  auto node = reinterpret_cast<const BPlusTreePage *>(read_page_guard->GetData());
+  while (!node->IsLeafPage()) {
+    auto n = reinterpret_cast<const IN_TREE_INTERNAL_PAGE_TYPE *>(read_page_guard->GetData());
+    int pos;
+    bool res = n->Lookup(key, comparator_, pos);
+    if (res) {
+      read_page_guard = bpm_->FetchPage(static_cast<page_id_t>(n->ValueAt(pos)));
+      node = reinterpret_cast<const BPlusTreePage *>(read_page_guard->GetData());
+    } else {
+      read_page_guard = bpm_->FetchPage(n->ValueAt(0));
+      node = reinterpret_cast<const BPlusTreePage *>(read_page_guard->GetData());
+    }
+  }
+  if (node->IsLeafPage()) {
+    auto n = reinterpret_cast<B_PLUS_TREE_LEAF_PAGE_TYPE *>(read_page_guard->GetData());
+    return n;
+  }
+  return nullptr;
 }
 
 /*****************************************************************************
@@ -83,12 +116,35 @@ auto BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transact
     auto page = bpm_->NewPage(&pageId);
     //    WritePageGuard guard = bpm_->FetchPageWrite(pageId);
     auto root_page_leaf = reinterpret_cast<B_PLUS_TREE_LEAF_PAGE_TYPE *>(page->GetData());
-    root_page_leaf->Init(1);
+    root_page_leaf->Init(leaf_max_size_);
+    root_page_id_ = pageId;
     root_page_leaf->Insert(key, value, comparator_);
+  } else {
+    // 递归向上分裂节点
+    auto leaf_node = Lookup(key);
+    if (leaf_node) {
+      if (leaf_node->Insert(key, value, comparator_)) {
+        return false;
+      } else {
+        if (leaf_node->GetSize() == leaf_node->GetMaxSize()) {
+          // 分裂
+          page_id_t pageId;
+          auto newLeafPage = bpm_->NewPage(&pageId);
+          auto root_page_leaf = reinterpret_cast<B_PLUS_TREE_LEAF_PAGE_TYPE *>(newLeafPage->GetData());
+          root_page_leaf->Init(leaf_max_size_);
+          leaf_node->SetNextPageId(pageId);
+          root_page_leaf->CopyLeafData((leaf_node->GetMaxSize() - 1) / 2, leaf_node);
+          root_page_leaf->SetSize(leaf_node->GetMaxSize() - (leaf_node->GetMaxSize() - 1) / 2);
+          leaf_node->SetSize((leaf_node->GetMaxSize() - 1) / 2);
+          // 插入parent
+        }
+      }
+    }
+
+    return false;
   }
   return false;
 }
-
 /*****************************************************************************
  * REMOVE
  *****************************************************************************/
@@ -99,11 +155,19 @@ auto BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transact
  * delete entry from leaf page. Remember to deal with redistribute or merge if
  * necessary.
  */
+
 INDEX_TEMPLATE_ARGUMENTS
 void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *txn) {
   // Declaration of context instance.
   Context ctx;
   (void)ctx;
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+void BPLUSTREE_TYPE::InsertToParent(const KeyType &key, page_id_t parentPageId, page_id_t child, Transaction *txn) {
+  auto p = bpm_->FetchPage(parentPageId);
+  auto node = reinterpret_cast<B_PLUS_TREE_INTERNAL_PAGE_TYPE *>(p->GetData());
+  node->Insert(key, child, comparator_);
 }
 
 /*****************************************************************************
@@ -114,8 +178,7 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *txn) {
  * index iterator
  * @return : index iterator
  */
-INDEX_TEMPLATE_ARGUMENTS
-auto BPLUSTREE_TYPE::Begin() -> INDEXITERATOR_TYPE { return INDEXITERATOR_TYPE(); }
+INDEX_TEMPLATE_ARGUMENTS auto BPLUSTREE_TYPE::Begin() -> INDEXITERATOR_TYPE { return INDEXITERATOR_TYPE(); }
 
 /*
  * Input parameter is low key, find the leaf page that contains the input key

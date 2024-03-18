@@ -19,6 +19,7 @@
 namespace bustub {
 
 #define B_PLUS_TREE_LEAF_PAGE_TYPE BPlusTreeLeafPage<KeyType, ValueType, KeyComparator>
+#define B_PLUS_TREE_I_PAGE_TYPE BPlusTreeLeafPage<KeyType, ValueType, KeyComparator>
 #define LEAF_PAGE_HEADER_SIZE 16
 #define LEAF_PAGE_SIZE ((BUSTUB_PAGE_SIZE - LEAF_PAGE_HEADER_SIZE) / sizeof(MappingType))
 
@@ -58,8 +59,11 @@ class BPlusTreeLeafPage : public BPlusTreePage {
   auto GetNextPageId() const -> page_id_t;
   void SetNextPageId(page_id_t next_page_id);
   auto KeyAt(int index) const -> KeyType;
-  auto Lookup(const KeyType &keyType, const KeyComparator &comparator, int &l) const -> bool;
-  void Insert(const KeyType &key, const ValueType &value, const KeyComparator &comparator);
+  auto Lookup(const KeyType &keyType, const KeyComparator &comparator, int &l);
+  bool Insert(const KeyType &key, const ValueType &value, const KeyComparator &comparator);
+  void CopyLeafData(int index, B_PLUS_TREE_LEAF_PAGE_TYPE *other);
+  void GetData(MappingType *array);
+  auto ValueAt(int index) const -> ValueType;
 
   /**
    * @brief for test only return a string representing all keys in

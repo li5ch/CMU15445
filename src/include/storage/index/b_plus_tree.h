@@ -77,10 +77,10 @@ class BPlusTree {
 
   // Remove a key and its value from this B+ tree.
   void Remove(const KeyType &key, Transaction *txn);
-
+  void InsertToParent(const KeyType &key, page_id_t parentPageId, page_id_t childPageId, Transaction *txn);
   // Return the value associated with a given key
   auto GetValue(const KeyType &key, std::vector<ValueType> *result, Transaction *txn = nullptr) -> bool;
-
+  auto Lookup(const KeyType &key) -> B_PLUS_TREE_LEAF_PAGE_TYPE *;
   // Return the page id of the root node
   auto GetRootPageId() -> page_id_t;
 

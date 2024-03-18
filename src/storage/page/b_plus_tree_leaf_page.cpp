@@ -52,28 +52,55 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::KeyAt(int index) const -> KeyType {
 }
 
 INDEX_TEMPLATE_ARGUMENTS
-auto B_PLUS_TREE_LEAF_PAGE_TYPE::Lookup(const KeyType &keyType, const KeyComparator &comparator, int &l) const -> bool {
-  l = 0;
-  int r = GetSize() - 1;
-  while (l < r) {
-    int mid = (l + r) / 2;
-    if (comparator(array_[mid].first, keyType) <= 0)
-      l = mid;
-    else
-      r = mid - 1;
-  }
-  return l <= r;
+auto B_PLUS_TREE_LEAF_PAGE_TYPE::ValueAt(int index) const -> ValueType {
+  // replace with your own code
+  return array_[index].second;
 }
+
 INDEX_TEMPLATE_ARGUMENTS
-void B_PLUS_TREE_LEAF_PAGE_TYPE::Insert(const KeyType &key, const ValueType &value, const KeyComparator &comparator) {
+auto B_PLUS_TREE_LEAF_PAGE_TYPE::Lookup(const KeyType &keyType, const KeyComparator &comparator, int &ans) {
+  int l = 0;
+  int r = GetSize() - 1;
+  while (l <= r) {
+    int mid = (l + r) >> 1;
+    if (comparator(array_[mid].first, keyType) < 0)
+      l = mid + 1;
+    else
+      r = mid;
+  }
+  ans = l;
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+bool B_PLUS_TREE_LEAF_PAGE_TYPE::Insert(const KeyType &key, const ValueType &value, const KeyComparator &comparator) {
   int idx;
   Lookup(key, comparator, idx);
+  if (comparator(array_[idx].first, key) == 0) {
+    array_[idx].second = value;
+    return false;
+  }
   for (int i = idx + 1; i < GetSize(); i++) {
     array_[i].first = array_[i - 1].first;
     array_[i].second = array_[i - 1].second;
   }
   array_[idx].first = key;
   array_[idx].second = value;
+  IncreaseSize(1);
+  return true;
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+void B_PLUS_TREE_LEAF_PAGE_TYPE::CopyLeafData(int index, B_PLUS_TREE_LEAF_PAGE_TYPE *other) {
+  for (int i = index; i < other->GetSize(); ++i) {
+    array_[i] = other->array_[i];
+  }
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+void B_PLUS_TREE_LEAF_PAGE_TYPE::GetData(MappingType *array) {
+  for (int i = 0; i < GetSize(); ++i) {
+    array[i] = array_[i];
+  }
 }
 
 template class BPlusTreeLeafPage<GenericKey<4>, RID, GenericComparator<4>>;

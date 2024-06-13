@@ -66,7 +66,7 @@ class BPlusTreeInternalPage : public BPlusTreePage {
    * @param value the value to search for
    */
   auto ValueIndex(const ValueType &value) const -> int;
-  auto Lookup(const KeyType &key, const KeyComparator &comparator, int &l) const -> bool;
+  auto Lookup(const KeyType &key, const KeyComparator &comparator) const -> ValueType;
   /**
    *
    * @param index the index

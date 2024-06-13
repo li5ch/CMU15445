@@ -56,7 +56,7 @@ INDEX_TEMPLATE_ARGUMENTS
 void B_PLUS_TREE_INTERNAL_PAGE_TYPE::Insert(const KeyType &key, const ValueType &value,
                                             const KeyComparator &comparator) {
   int idx;
-  Lookup(key, comparator, idx);
+
   if (comparator(array_[idx].first, key) == 0) {
     array_[idx].second = value;
     return;
@@ -71,19 +71,13 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::Insert(const KeyType &key, const ValueType 
 }
 
 INDEX_TEMPLATE_ARGUMENTS
-auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::Lookup(const KeyType &key, const KeyComparator &comparator, int &ans) const
-    -> bool {
-  int l = 0;
-  int r = GetSize() - 1;
-  while (l <= r) {
-    int mid = (l + r) >> 1;
-    if (comparator(array_[mid].first, key) < 0)
-      l = mid + 1;
-    else
-      r = mid;
+auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::Lookup(const KeyType &key, const KeyComparator &comparator) const -> ValueType{
+  auto target = std::lower_bound(array_+1,array_+GetSize(),key,[&comparator](const auto &pair,auto k){return comparator(pair.first,k)<0;});
+  if(target == array_+GetSize()) {
+    return ValueAt(GetSize()-1);
   }
-  ans = l;
-  return false;
+  if(comparator(target->first,key)==0) return target->second;
+  return std::prev(target)->second;
 }
 
 INDEX_TEMPLATE_ARGUMENTS

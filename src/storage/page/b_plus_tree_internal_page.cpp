@@ -55,18 +55,17 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::CopyDataByIndex(int index, MappingType *arr
 INDEX_TEMPLATE_ARGUMENTS
 void B_PLUS_TREE_INTERNAL_PAGE_TYPE::Insert(const KeyType &key, const ValueType &value,
                                             const KeyComparator &comparator) {
-  int idx;
 
-  if (comparator(array_[idx].first, key) == 0) {
-    array_[idx].second = value;
+  auto target = std::lower_bound(array_+1,array_+GetSize(),key,[&comparator](const auto &pair,auto k){return comparator(pair.first,k)<0;});
+  if(target == array_+GetSize()) {
+    array_[GetSize()] = {key,value};
+    IncreaseSize(1);
     return;
   }
-  for (int i = idx + 1; i < GetSize(); i++) {
-    array_[i].first = array_[i - 1].first;
-    array_[i].second = array_[i - 1].second;
-  }
-  array_[idx].first = key;
-  array_[idx].second = value;
+
+  std::move_backward(target+1,array_+GetSize(),array_+GetSize()+1);
+  *target  = {key,value};
+
   IncreaseSize(1);
 }
 

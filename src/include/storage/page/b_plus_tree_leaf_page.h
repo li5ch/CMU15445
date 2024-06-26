@@ -54,7 +54,7 @@ namespace bustub {
          * method to set default values
          * @param max_size Max size of the leaf node
          */
-        void Init(int max_size = LEAF_PAGE_SIZE);
+        void Init(page_id_t page, page_id_t parent_page_id, int max_size = LEAF_PAGE_SIZE);
 
         // helper methods
         auto GetNextPageId() const -> page_id_t;
@@ -63,9 +63,9 @@ namespace bustub {
 
         auto KeyAt(int index) const -> KeyType;
 
-        auto Lookup(const KeyType &keyType, const KeyComparator &comparator) -> ValueType;
+        auto Lookup(const KeyType &keyType, const KeyComparator &comparator, bool &ans) const -> ValueType;
 
-        void Insert(const KeyType &key, const ValueType &value, const KeyComparator &comparator);
+        bool Insert(const KeyType &key, const ValueType &value, const KeyComparator &comparator);
 
         void CopyLeafData(int index, B_PLUS_TREE_LEAF_PAGE_TYPE *other);
 

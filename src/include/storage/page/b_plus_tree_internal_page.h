@@ -33,75 +33,85 @@ namespace bustub {
  * | HEADER | KEY(1)+PAGE_ID(1) | KEY(2)+PAGE_ID(2) | ... | KEY(n)+PAGE_ID(n) |
  *  --------------------------------------------------------------------------
  */
-INDEX_TEMPLATE_ARGUMENTS
-class BPlusTreeInternalPage : public BPlusTreePage {
- public:
-  // Deleted to disallow initialization
-  BPlusTreeInternalPage() = delete;
-  BPlusTreeInternalPage(const BPlusTreeInternalPage &other) = delete;
+	INDEX_TEMPLATE_ARGUMENTS
+	class BPlusTreeInternalPage : public BPlusTreePage {
+	public:
+		// Deleted to disallow initialization
+		BPlusTreeInternalPage() = delete;
 
-  /**
-   * Writes the necessary header information to a newly created page, must be called after
-   * the creation of a new page to make a valid BPlusTreeInternalPage
-   * @param max_size Maximal size of the page
-   */
-  void Init(int max_size = INTERNAL_PAGE_SIZE);
+		BPlusTreeInternalPage(const BPlusTreeInternalPage &other) = delete;
 
-  /**
-   * @param index The index of the key to get. Index must be non-zero.
-   * @return Key at index
-   */
-  auto KeyAt(int index) const -> KeyType;
+		/**
+		 * Writes the necessary header information to a newly created page, must be called after
+		 * the creation of a new page to make a valid BPlusTreeInternalPage
+		 * @param max_size Maximal size of the page
+		 */
+		void Init(page_id_t page, page_id_t parent_id, int max_size = INTERNAL_PAGE_SIZE);
 
-  /**
-   *
-   * @param index The index of the key to set. Index must be non-zero.
-   * @param key The new value for key
-   */
-  void SetKeyAt(int index, const KeyType &key);
-  void CopyDataByIndex(int index, MappingType *array);
-  void Insert(const KeyType &key, const ValueType &value, const KeyComparator &comparator);
-  /**
-   *
-   * @param value the value to search for
-   */
-  auto ValueIndex(const ValueType &value) const -> int;
-  auto Lookup(const KeyType &key, const KeyComparator &comparator) const -> ValueType;
-  /**
-   *
-   * @param index the index
-   * @return the value at the index
-   */
-  auto ValueAt(int index) const -> ValueType;
+		/**
+		 * @param index The index of the key to get. Index must be non-zero.
+		 * @return Key at index
+		 */
+		auto KeyAt(int index) const -> KeyType;
 
-  /**
-   * @brief For test only, return a string representing all keys in
-   * this internal page, formatted as "(key1,key2,key3,...)"
-   *
-   * @return std::string
-   */
-  auto ToString() const -> std::string {
-    std::string kstr = "(";
-    bool first = true;
+		void CopyLeafData(int index, B_PLUS_TREE_INTERNAL_PAGE_TYPE *other);
 
-    // first key of internal page is always invalid
-    for (int i = 1; i < GetSize(); i++) {
-      KeyType key = KeyAt(i);
-      if (first) {
-        first = false;
-      } else {
-        kstr.append(",");
-      }
+		/**
+		 *
+		 * @param index The index of the key to set. Index must be non-zero.
+		 * @param key The new value for key
+		 */
+		void SetKeyAt(int index, const KeyType &key);
 
-      kstr.append(std::to_string(key.ToString()));
-    }
-    kstr.append(")");
+		void SetValueAt(int index, const ValueType &valueType);
 
-    return kstr;
-  }
+		void CopyDataByIndex(int index, MappingType *array);
 
- private:
-  // Flexible array member for page data.
-  MappingType array_[0];
-};
+		void Insert(const KeyType &key, const ValueType &value, const KeyComparator &comparator);
+
+		/**
+		 *
+		 * @param value the value to search for
+		 */
+		auto ValueIndex(const ValueType &value) const -> int;
+
+		auto Lookup(const KeyType &key, const KeyComparator &comparator) const -> ValueType;
+
+		/**
+		 *
+		 * @param index the index
+		 * @return the value at the index
+		 */
+		auto ValueAt(int index) const -> ValueType;
+
+		/**
+		 * @brief For test only, return a string representing all keys in
+		 * this internal page, formatted as "(key1,key2,key3,...)"
+		 *
+		 * @return std::string
+		 */
+		auto ToString() const -> std::string {
+			std::string kstr = "(";
+			bool first = true;
+
+			// first key of internal page is always invalid
+			for (int i = 1; i < GetSize(); i++) {
+				KeyType key = KeyAt(i);
+				if (first) {
+					first = false;
+				} else {
+					kstr.append(",");
+				}
+
+				kstr.append(std::to_string(key.ToString()));
+			}
+			kstr.append(")");
+
+			return kstr;
+		}
+
+	private:
+		// Flexible array member for page data.
+		MappingType array_[0];
+	};
 }  // namespace bustub

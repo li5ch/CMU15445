@@ -46,7 +46,8 @@ namespace bustub {
 
 	INDEX_TEMPLATE_ARGUMENTS
 	void B_PLUS_TREE_INTERNAL_PAGE_TYPE::CopyLeafData(int index, B_PLUS_TREE_INTERNAL_PAGE_TYPE *other) {
-		for (int i = index; i < other->GetSize(); ++i) {
+		array_[0].second = other->array_[index].second;
+		for (int i = index + 1; i < other->GetSize(); ++i) {
 			array_[i - index] = other->array_[i];
 		}
 	}
@@ -82,6 +83,15 @@ namespace bustub {
 		*target = {key, value};
 
 		IncreaseSize(1);
+	}
+
+	INDEX_TEMPLATE_ARGUMENTS
+	void B_PLUS_TREE_INTERNAL_PAGE_TYPE::PopulateNewRoot(const ValueType &old_value, const KeyType &new_key,
+														 const ValueType &new_value) {
+		SetKeyAt(1, new_key);
+		SetValueAt(0, old_value);
+		SetValueAt(1, new_value);
+		SetSize(2);
 	}
 
 	INDEX_TEMPLATE_ARGUMENTS

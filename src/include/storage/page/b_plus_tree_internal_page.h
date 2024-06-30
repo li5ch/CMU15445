@@ -69,6 +69,9 @@ namespace bustub {
 
 		void Insert(const KeyType &key, const ValueType &value, const KeyComparator &comparator);
 
+		void PopulateNewRoot(const ValueType &old_value, const KeyType &new_key,
+							 const ValueType &new_value);
+
 		/**
 		 *
 		 * @param value the value to search for
@@ -106,6 +109,8 @@ namespace bustub {
 				kstr.append(std::to_string(key.ToString()));
 			}
 			kstr.append(")");
+			kstr += "page:";
+			kstr += std::to_string(GetPage());
 
 			return kstr;
 		}

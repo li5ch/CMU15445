@@ -42,18 +42,18 @@ namespace bustub {
 		Context ctx;
 		(void) ctx;
 		auto root = GetRootPageId();
-		auto read_page_guard = bpm_->FetchPageRead(root);
-		auto node = reinterpret_cast<const BPlusTreePage *>(read_page_guard.GetData());
+		auto read_page_guard = bpm_->FetchPage(root);
+		auto node = reinterpret_cast<const BPlusTreePage *>(read_page_guard->GetData());
 		while (!node->IsLeafPage()) {
-			auto n = reinterpret_cast<const InternalPage *>(read_page_guard.GetData());
+			auto n = reinterpret_cast<const InternalPage *>(read_page_guard->GetData());
 			auto v = n->Lookup(key, comparator_);
-			read_page_guard = bpm_->FetchPageRead(static_cast<page_id_t>(v));
-			node = reinterpret_cast<const BPlusTreePage *>(read_page_guard.GetData());
-			bpm_->UnpinPage(read_page_guard.PageId(), false);
+			read_page_guard = bpm_->FetchPage(v);
+			node = reinterpret_cast<const BPlusTreePage *>(read_page_guard->GetData());
+			bpm_->UnpinPage(read_page_guard->GetPageId(), false);
 		}
 		if (node->IsLeafPage()) {
-			auto n = reinterpret_cast<const LeafPage *>(read_page_guard.GetData());
-			bpm_->UnpinPage(read_page_guard.PageId(), false);
+			auto n = reinterpret_cast<const LeafPage *>(read_page_guard->GetData());
+			bpm_->UnpinPage(read_page_guard->GetPageId(), false);
 			bool ans = false;
 			auto v = n->Lookup(key, comparator_, ans);
 			if (ans) {
@@ -71,9 +71,9 @@ namespace bustub {
 		auto root_page_leaf = reinterpret_cast<LeafPage *>(newLeafPage->GetData());
 		root_page_leaf->Init(pageId, INVALID_PAGE_ID, leaf_max_size_);
 		leaf_node->SetNextPageId(pageId);
-		root_page_leaf->CopyLeafData((leaf_node->GetMaxSize() - 1) / 2 + 1, leaf_node);
-		root_page_leaf->SetSize(leaf_node->GetMaxSize() - 1 - (leaf_node->GetMaxSize() - 1) / 2);
-		leaf_node->SetSize((leaf_node->GetMaxSize() - 1) / 2);
+		root_page_leaf->CopyLeafData(leaf_node->GetMaxSize() / 2, leaf_node);
+		root_page_leaf->SetSize(leaf_node->GetMaxSize() - (leaf_node->GetMaxSize()) / 2);
+		leaf_node->SetSize(leaf_node->GetMaxSize() / 2);
 		return root_page_leaf;
 	}
 
@@ -82,17 +82,17 @@ namespace bustub {
 		page_id_t pageId;
 		auto newLeafPage = bpm_->NewPage(&pageId);
 		auto root_page_leaf = reinterpret_cast<InternalPage *>(newLeafPage->GetData());
-		root_page_leaf->Init(pageId, INVALID_PAGE_ID, leaf_max_size_);
-		root_page_leaf->CopyLeafData((leaf_node->GetMaxSize() - 1) / 2 + 1, leaf_node);
-		root_page_leaf->SetSize(leaf_node->GetMaxSize() - 1 - (leaf_node->GetMaxSize() - 1) / 2);
-		leaf_node->SetSize((leaf_node->GetMaxSize() - 1) / 2);
+		root_page_leaf->Init(pageId, INVALID_PAGE_ID, internal_max_size_);
+		root_page_leaf->CopyLeafData((leaf_node->GetMaxSize()) / 2 + 1, leaf_node);
+		root_page_leaf->SetSize(leaf_node->GetSize() - (leaf_node->GetMaxSize()) / 2 - 1);
+		leaf_node->SetSize((leaf_node->GetMaxSize()) / 2 + 1);
 		bpm_->UnpinPage(newLeafPage->GetPageId(), true);
 		return root_page_leaf;
 	}
 
 
 	INDEX_TEMPLATE_ARGUMENTS
-	auto BPLUSTREE_TYPE::Lookup(const KeyType &key) -> B_PLUS_TREE_LEAF_PAGE_TYPE * {
+	auto BPLUSTREE_TYPE::Lookup(const KeyType &key) -> LeafPage * {
 		// Declaration of context instance.
 		Context ctx;
 		(void) ctx;
@@ -100,13 +100,13 @@ namespace bustub {
 		auto read_page_guard = bpm_->FetchPage(root);
 		auto node = reinterpret_cast<const BPlusTreePage *>(read_page_guard->GetData());
 		while (!node->IsLeafPage()) {
-			auto n = reinterpret_cast<const IN_TREE_INTERNAL_PAGE_TYPE *>(read_page_guard->GetData());
+			auto n = reinterpret_cast<const InternalPage *>(read_page_guard->GetData());
 			auto v = n->Lookup(key, comparator_);
 			read_page_guard = bpm_->FetchPage(static_cast<page_id_t>(v));
 			node = reinterpret_cast<const BPlusTreePage *>(read_page_guard->GetData());
 		}
 		if (node->IsLeafPage()) {
-			auto n = reinterpret_cast<B_PLUS_TREE_LEAF_PAGE_TYPE *>(read_page_guard->GetData());
+			auto n = reinterpret_cast<LeafPage *>(read_page_guard->GetData());
 			return n;
 		}
 		return nullptr;
@@ -146,7 +146,7 @@ namespace bustub {
 					// split leaf node
 					auto newNode = SplitLeafNode(leaf_node);
 					// insert to parent 递归
-					InsertToParent(leaf_node->KeyAt(leaf_node->GetSize() / 2), leaf_node, newNode, txn);
+					InsertToParent(newNode->KeyAt(0), leaf_node, newNode, txn);
 				}
 			}
 
@@ -180,26 +180,36 @@ namespace bustub {
 			page_id_t pageId;
 			auto page = bpm_->NewPage(&pageId);
 			//    WritePageGuard guard = bpm_->FetchPageWrite(pageId);
-			auto root_page_leaf = reinterpret_cast<LeafPage *>(page->GetData());
-			root_page_leaf->Init(pageId, INVALID_PAGE_ID, leaf_max_size_);
+			auto root_page = reinterpret_cast<InternalPage *>(page->GetData());
+			root_page->Init(pageId, INVALID_PAGE_ID, internal_max_size_);
+			std::cout << "before[root]" << DrawBPlusTree() << std::endl;
+			root_page->PopulateNewRoot(old_node->GetPage(), key, new_node->GetPage());
 			root_page_id_ = pageId;
-
+			old_node->SetParentPage(root_page_id_);
+			new_node->SetParentPage(root_page_id_);
 			return;
 		}
 		auto p = bpm_->FetchPage(old_node->GetParentPage());
 		auto node = reinterpret_cast<InternalPage *>(p->GetData());
-		if (node->GetSize() == node->GetMaxSize()) {
-			auto k = node->KeyAt(node->GetSize() / 2);
-			auto node1 = SplitInternalNode(node);
-			auto pa = node->GetParentPage();
-			p = bpm_->FetchPage(pa);
-			node = reinterpret_cast<InternalPage *>(p->GetData());
-			InsertToParent(k, node, node1, txn);
 
+		if (node->GetSize() < node->GetMaxSize()) {
+			new_node->SetParentPage(node->GetPage());
+			node->Insert(key, new_node->GetPage(), comparator_);
+			std::cout << DrawBPlusTree() << std::endl;
+			bpm_->UnpinPage(p->GetPageId(), true);
+			return;
 		}
 		node->Insert(key, new_node->GetPage(), comparator_);
-
+		auto k = node->KeyAt(node->GetMaxSize() / 2 + 1);
+		auto node1 = SplitInternalNode(node);
+		InsertToParent(k, node, node1, txn);
+		for (int i = 0; i < node1->GetSize(); i++) {
+			auto ch = bpm_->FetchPage(node1->ValueAt(i));
+			auto ch_page = reinterpret_cast<BPlusTreePage *>(ch->GetData());
+			ch_page->SetParentPage(node1->GetPage());
+		}
 		bpm_->UnpinPage(p->GetPageId(), true);
+		std::cout << "after" << DrawBPlusTree() << std::endl;
 	}
 
 /*****************************************************************************
@@ -211,7 +221,22 @@ namespace bustub {
  * @return : index iterator
  */
 	INDEX_TEMPLATE_ARGUMENTS
-	auto BPLUSTREE_TYPE::Begin() -> INDEXITERATOR_TYPE { return INDEXITERATOR_TYPE(); }
+	auto BPLUSTREE_TYPE::Begin() -> INDEXITERATOR_TYPE {
+
+		auto root = GetRootPageId();
+		auto read_page_guard = bpm_->FetchPage(root);
+		auto node = reinterpret_cast<const BPlusTreePage *>(read_page_guard->GetData());
+		while (!node->IsLeafPage()) {
+			auto n = reinterpret_cast<const InternalPage *>(read_page_guard->GetData());
+			read_page_guard = bpm_->FetchPage(n->ValueAt(0));
+			node = reinterpret_cast<const BPlusTreePage *>(read_page_guard->GetData());
+		}
+		if (node->IsLeafPage()) {
+			return INDEXITERATOR_TYPE(bpm_, read_page_guard);
+		}
+
+		return INDEXITERATOR_TYPE();
+	}
 
 /*
  * Input parameter is low key, find the leaf page that contains the input key
@@ -219,7 +244,23 @@ namespace bustub {
  * @return : index iterator
  */
 	INDEX_TEMPLATE_ARGUMENTS
-	auto BPLUSTREE_TYPE::Begin(const KeyType &key) -> INDEXITERATOR_TYPE { return INDEXITERATOR_TYPE(); }
+	auto BPLUSTREE_TYPE::Begin(const KeyType &key) -> INDEXITERATOR_TYPE {
+		auto root = GetRootPageId();
+		auto read_page_guard = bpm_->FetchPage(root);
+		auto node = reinterpret_cast<const BPlusTreePage *>(read_page_guard->GetData());
+		while (!node->IsLeafPage()) {
+			auto n = reinterpret_cast<const InternalPage *>(read_page_guard->GetData());
+			auto v = n->Lookup(key, comparator_);
+			read_page_guard = bpm_->FetchPage(static_cast<page_id_t>(v));
+			node = reinterpret_cast<const BPlusTreePage *>(read_page_guard->GetData());
+		}
+		if (node->IsLeafPage()) {
+			auto n = reinterpret_cast<LeafPage *>(read_page_guard->GetData());
+			auto i = n->KeyIndex(key, comparator_);
+			return INDEXITERATOR_TYPE(bpm_, read_page_guard, i);
+		}
+		return INDEXITERATOR_TYPE();
+	}
 
 /*
  * Input parameter is void, construct an index iterator representing the end
@@ -227,7 +268,26 @@ namespace bustub {
  * @return : index iterator
  */
 	INDEX_TEMPLATE_ARGUMENTS
-	auto BPLUSTREE_TYPE::End() -> INDEXITERATOR_TYPE { return INDEXITERATOR_TYPE(); }
+	auto BPLUSTREE_TYPE::End() -> INDEXITERATOR_TYPE {
+		auto root = GetRootPageId();
+		auto read_page_guard = bpm_->FetchPage(root);
+		auto node = reinterpret_cast<const BPlusTreePage *>(read_page_guard->GetData());
+		while (!node->IsLeafPage()) {
+			auto n = reinterpret_cast<const InternalPage *>(read_page_guard->GetData());
+			read_page_guard = bpm_->FetchPage(n->ValueAt(n->GetSize() - 1));
+			node = reinterpret_cast<const BPlusTreePage *>(read_page_guard->GetData());
+		}
+		if (node->IsLeafPage()) {
+			auto n = reinterpret_cast<const LeafPage *>(read_page_guard->GetData());
+			while (n->GetNextPageId() != INVALID_PAGE_ID) {
+				read_page_guard = bpm_->FetchPage(n->GetNextPageId());
+				n = reinterpret_cast<const LeafPage *>(read_page_guard->GetData());
+			}
+
+			return INDEXITERATOR_TYPE(bpm_, read_page_guard, n->GetSize());
+		}
+		return INDEXITERATOR_TYPE();
+	}
 
 /**
  * @return Page id of the root of this tree

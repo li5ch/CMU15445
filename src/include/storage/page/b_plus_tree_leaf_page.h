@@ -41,66 +41,72 @@ namespace bustub {
  * |  NextPageId (4)
  *  -----------------------------------------------
  */
-    INDEX_TEMPLATE_ARGUMENTS
-    class BPlusTreeLeafPage : public BPlusTreePage {
-    public:
-        // Delete all constructor / destructor to ensure memory safety
-        BPlusTreeLeafPage() = delete;
+	INDEX_TEMPLATE_ARGUMENTS
+	class BPlusTreeLeafPage : public BPlusTreePage {
+	public:
+		// Delete all constructor / destructor to ensure memory safety
+		BPlusTreeLeafPage() = delete;
 
-        BPlusTreeLeafPage(const BPlusTreeLeafPage &other) = delete;
+		BPlusTreeLeafPage(const BPlusTreeLeafPage &other) = delete;
 
-        /**
-         * After creating a new leaf page from buffer pool, must call initialize
-         * method to set default values
-         * @param max_size Max size of the leaf node
-         */
-        void Init(page_id_t page, page_id_t parent_page_id, int max_size = LEAF_PAGE_SIZE);
+		/**
+		 * After creating a new leaf page from buffer pool, must call initialize
+		 * method to set default values
+		 * @param max_size Max size of the leaf node
+		 */
+		void Init(page_id_t page, page_id_t parent_page_id, int max_size = LEAF_PAGE_SIZE);
 
-        // helper methods
-        auto GetNextPageId() const -> page_id_t;
+		// helper methods
+		auto GetNextPageId() const -> page_id_t;
 
-        void SetNextPageId(page_id_t next_page_id);
+		void SetNextPageId(page_id_t next_page_id);
 
-        auto KeyAt(int index) const -> KeyType;
+		auto KeyAt(int index) const -> KeyType;
 
-        auto Lookup(const KeyType &keyType, const KeyComparator &comparator, bool &ans) const -> ValueType;
+		auto Lookup(const KeyType &keyType, const KeyComparator &comparator, bool &ans) const -> ValueType;
 
-        bool Insert(const KeyType &key, const ValueType &value, const KeyComparator &comparator);
+		bool Insert(const KeyType &key, const ValueType &value, const KeyComparator &comparator);
 
-        void CopyLeafData(int index, B_PLUS_TREE_LEAF_PAGE_TYPE *other);
+		void CopyLeafData(int index, B_PLUS_TREE_LEAF_PAGE_TYPE *other);
 
-        void GetData(MappingType *array);
+		void GetData(MappingType *array);
 
-        auto ValueAt(int index) const -> ValueType;
+		auto ValueAt(int index) const -> ValueType;
 
-        /**
-         * @brief for test only return a string representing all keys in
-         * this leaf page formatted as "(key1,key2,key3,...)"
-         *
-         * @return std::string
-         */
-        auto ToString() const -> std::string {
-            std::string kstr = "(";
-            bool first = true;
+		auto GetItem(int index) -> const MappingType &;
 
-            for (int i = 0; i < GetSize(); i++) {
-                KeyType key = KeyAt(i);
-                if (first) {
-                    first = false;
-                } else {
-                    kstr.append(",");
-                }
+		auto KeyIndex(const KeyType &key, const KeyComparator &comparator) const -> int;
 
-                kstr.append(std::to_string(key.ToString()));
-            }
-            kstr.append(")");
+		/**
+		 * @brief for test only return a string representing all keys in
+		 * this leaf page formatted as "(key1,key2,key3,...)"
+		 *
+		 * @return std::string
+		 */
+		auto ToString() const -> std::string {
+			std::string kstr = "(";
+			bool first = true;
 
-            return kstr;
-        }
+			for (int i = 0; i < GetSize(); i++) {
+				KeyType key = KeyAt(i);
+				if (first) {
+					first = false;
+				} else {
+					kstr.append(",");
+				}
 
-    private:
-        page_id_t next_page_id_;
-        // Flexible array member for page data.
-        MappingType array_[0];
-    };
+				kstr.append(std::to_string(key.ToString()));
+			}
+			kstr.append(")");
+			kstr += "page:";
+			kstr += std::to_string(GetPage());
+
+			return kstr;
+		}
+
+	private:
+		page_id_t next_page_id_;
+		// Flexible array member for page data.
+		MappingType array_[0];
+	};
 }  // namespace bustub

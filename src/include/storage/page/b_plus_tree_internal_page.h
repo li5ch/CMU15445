@@ -69,6 +69,8 @@ namespace bustub {
 
 		void Insert(const KeyType &key, const ValueType &value, const KeyComparator &comparator);
 
+		void InsertFrontNode(const MappingType &node);
+
 		void PopulateNewRoot(const ValueType &old_value, const KeyType &new_key,
 							 const ValueType &new_value);
 
@@ -79,6 +81,8 @@ namespace bustub {
 		auto ValueIndex(const ValueType &value) const -> int;
 
 		auto Lookup(const KeyType &key, const KeyComparator &comparator) const -> ValueType;
+
+		auto GetItem(int index) -> const MappingType &;
 
 		/**
 		 *

@@ -52,6 +52,7 @@ namespace bustub {
 		}
 	}
 
+
 	INDEX_TEMPLATE_ARGUMENTS
 	void B_PLUS_TREE_INTERNAL_PAGE_TYPE::SetKeyAt(int index, const KeyType &key) { array_[index].first = key; }
 
@@ -64,6 +65,15 @@ namespace bustub {
 		for (int i = index; i < GetSize(); ++i) {
 			array_[i] = array[i];
 		}
+	}
+
+	INDEX_TEMPLATE_ARGUMENTS
+	auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::GetItem(int index) -> const MappingType & { return array_[index]; }
+
+	INDEX_TEMPLATE_ARGUMENTS
+	void B_PLUS_TREE_INTERNAL_PAGE_TYPE::InsertFrontNode(const MappingType &node) {
+		
+
 	}
 
 	INDEX_TEMPLATE_ARGUMENTS

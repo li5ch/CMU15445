@@ -79,6 +79,18 @@ namespace bustub {
 	}
 
 	INDEX_TEMPLATE_ARGUMENTS
+	auto B_PLUS_TREE_LEAF_PAGE_TYPE::DeleteKey(const KeyType &key, const KeyComparator &comparator) -> bool {
+		auto i = KeyIndex(key, comparator);
+		if (i == GetSize() || comparator(array_[i].first, key)) {
+			return false;
+		}
+		std::move_backward(array_ + i + 1, array_ + GetSize(), array_ + i);
+		IncreaseSize(-1);
+		return true;
+	}
+
+
+	INDEX_TEMPLATE_ARGUMENTS
 	auto B_PLUS_TREE_LEAF_PAGE_TYPE::Lookup(const KeyType &key, const KeyComparator &comparator,
 											bool &ans) const -> ValueType {
 		auto target = std::lower_bound(array_, array_ + GetSize(), key, [&comparator](const auto &pair, auto k) {

@@ -170,7 +170,38 @@ namespace bustub {
 		// Declaration of context instance.x`
 		Context ctx;
 		(void) ctx;
+		auto page = Lookup(key);
+		auto ok = page->DeleteKey(key, comparator_);
+		if(ok){
+			bpm_->UnpinPage(page->GetPage(),true);
+		}
+		if (page->GetSize() >= std::ceil(page->GetMaxSize() / 2)) {
+			return;
+		}
+		auto parent_page = bpm_->FetchPage(page->GetParentPage());
+		auto node = reinterpret_cast<InternalPage *>( parent_page->GetData());
+		page_id_t left_page_id = INVALID_PAGE_ID, right_page_id = INVALID_PAGE_ID;
+		for (int i = 0; i < node->GetSize(); ++i) {
+			if (node->GetItem(i).second == page->GetPage()) {
+				if (i > 0)left_page_id = node->GetItem(i - 1).second;
+				if (i + 1 < node->GetSize())right_page_id = node->GetItem(i + 1).second;
+				break;
+			}
+		}
+		if (left_page_id != INVALID_PAGE_ID) {
+			auto le_page = bpm_->FetchPage(left_page_id);
+			auto le_node = reinterpret_cast<LeafPage *> (le_page->GetData());
+			if (le_node->GetSize() > std::ceil(le_node->GetMaxSize() / 2)) {
+				node->Insert(le_node->)
+				le_node->IncreaseSize(-1);
+				bpm_->UnpinPage(left_page_id,true);
+
+			}
+
+		}
+
 	}
+
 
 	INDEX_TEMPLATE_ARGUMENTS
 	void BPLUSTREE_TYPE::InsertToParent(const KeyType &key, BPlusTreePage *old_node,

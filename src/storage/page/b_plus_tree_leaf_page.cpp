@@ -89,6 +89,22 @@ namespace bustub {
 		return true;
 	}
 
+	INDEX_TEMPLATE_ARGUMENTS
+	void B_PLUS_TREE_LEAF_PAGE_TYPE::InsertFrontNode(const MappingType &node) {
+		std::move_backward(array_, array_ + GetSize(), array_ + 1);
+		array_[0] = node;
+
+	}
+
+	INDEX_TEMPLATE_ARGUMENTS
+	void B_PLUS_TREE_LEAF_PAGE_TYPE::MergeRightNode(const B_PLUS_TREE_LEAF_PAGE_TYPE *other) {
+		for (int i = 0; i < other->GetSize(); ++i) {
+			array_[i + GetSize()] = other->array_[i];
+		}
+		SetNextPageId(other->GetNextPageId());
+
+	}
+
 
 	INDEX_TEMPLATE_ARGUMENTS
 	auto B_PLUS_TREE_LEAF_PAGE_TYPE::Lookup(const KeyType &key, const KeyComparator &comparator,

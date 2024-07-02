@@ -172,8 +172,8 @@ namespace bustub {
 		(void) ctx;
 		auto page = Lookup(key);
 		auto ok = page->DeleteKey(key, comparator_);
-		if(ok){
-			bpm_->UnpinPage(page->GetPage(),true);
+		if (ok) {
+			bpm_->UnpinPage(page->GetPage(), true);
 		}
 		if (page->GetSize() >= std::ceil(page->GetMaxSize() / 2)) {
 			return;
@@ -181,8 +181,10 @@ namespace bustub {
 		auto parent_page = bpm_->FetchPage(page->GetParentPage());
 		auto node = reinterpret_cast<InternalPage *>( parent_page->GetData());
 		page_id_t left_page_id = INVALID_PAGE_ID, right_page_id = INVALID_PAGE_ID;
+		int j;
 		for (int i = 0; i < node->GetSize(); ++i) {
 			if (node->GetItem(i).second == page->GetPage()) {
+				j = i;
 				if (i > 0)left_page_id = node->GetItem(i - 1).second;
 				if (i + 1 < node->GetSize())right_page_id = node->GetItem(i + 1).second;
 				break;
@@ -192,16 +194,38 @@ namespace bustub {
 			auto le_page = bpm_->FetchPage(left_page_id);
 			auto le_node = reinterpret_cast<LeafPage *> (le_page->GetData());
 			if (le_node->GetSize() > std::ceil(le_node->GetMaxSize() / 2)) {
-				node->Insert(le_node->)
+				page->InsertFrontNode(le_node->GetItem(le_node->GetSize() - 1));
+				node->SetKeyAt(j, le_node->KeyAt(le_node->GetSize() - 1));
 				le_node->IncreaseSize(-1);
-				bpm_->UnpinPage(left_page_id,true);
+				bpm_->UnpinPage(left_page_id, true);
+				return;
+			} else {
+				le_node->MergeRightNode(page);
+				bpm_->DeletePage(page->GetPage());
+				bpm_->UnpinPage(left_page_id, true);
+				bpm_->UnpinPage(page->GetPage(), true);
+				// 实现DeleteInternalKey方法，往上递归
+				node->DeleteKeyIndex(j);
+				if (node->GetSize() >= std::ceil(node->GetMaxSize() / 2)) {
+					return;
+				} else {
 
+				}
 			}
 
 		}
 
 	}
 
+	INDEX_TEMPLATE_ARGUMENTS
+	void BPLUSTREE_TYPE::DeleteInternalKey(InternalPage *node, int index, Transaction *txn) {
+		node->DeleteKeyIndex(index);
+		if (node->GetSize() >= std::ceil(node->GetMaxSize() / 2)) {
+			return;
+		} else {
+
+		}
+	}
 
 	INDEX_TEMPLATE_ARGUMENTS
 	void BPLUSTREE_TYPE::InsertToParent(const KeyType &key, BPlusTreePage *old_node,

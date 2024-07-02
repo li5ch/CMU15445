@@ -82,6 +82,8 @@ namespace bustub {
 		InsertToParent(const KeyType &key, BPlusTreePage *old_node, BPlusTreePage *new_node,
 					   Transaction *txn);
 
+		void DeleteInternalKey(InternalPage *node, int index, Transaction *txn);
+
 		// Return the value associated with a given key
 		auto GetValue(const KeyType &key, std::vector<ValueType> *result, Transaction *txn = nullptr) -> bool;
 

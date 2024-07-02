@@ -68,13 +68,38 @@ namespace bustub {
 	}
 
 	INDEX_TEMPLATE_ARGUMENTS
+	void B_PLUS_TREE_INTERNAL_PAGE_TYPE::DeleteKeyIndex(int index) {
+
+		std::move_backward(array_ + index + 1, array_ + GetSize(), array_ + index);
+		IncreaseSize(-1);
+	}
+
+	INDEX_TEMPLATE_ARGUMENTS
 	auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::GetItem(int index) -> const MappingType & { return array_[index]; }
 
 	INDEX_TEMPLATE_ARGUMENTS
 	void B_PLUS_TREE_INTERNAL_PAGE_TYPE::InsertFrontNode(const MappingType &node) {
-		
+		std::move_backward(array_, array_ + GetSize(), array_ + 1);
+		array_[0] = node;
 
 	}
+
+
+	INDEX_TEMPLATE_ARGUMENTS
+	auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::KeyIndex(const KeyType &key, const KeyComparator &comparator) const -> int {
+		// replace with your own code
+		auto target = std::lower_bound(array_ + 1, array_ + GetSize(), key, [&comparator](const auto &pair, auto k) {
+			return comparator(pair.first, k) < 0;
+		});
+
+		if (target == array_ + GetSize()) {
+			if (comparator(KeyAt(GetSize() - 1), key) == 0)
+				return GetSize() - 1;
+			return GetSize();
+		}
+		return target - array_;
+	}
+
 
 	INDEX_TEMPLATE_ARGUMENTS
 	void B_PLUS_TREE_INTERNAL_PAGE_TYPE::Insert(const KeyType &key, const ValueType &value,

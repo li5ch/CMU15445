@@ -67,6 +67,8 @@ namespace bustub {
 
 		void CopyDataByIndex(int index, MappingType *array);
 
+		void DeleteKeyIndex(int index);
+
 		void Insert(const KeyType &key, const ValueType &value, const KeyComparator &comparator);
 
 		void InsertFrontNode(const MappingType &node);
@@ -83,7 +85,7 @@ namespace bustub {
 		auto Lookup(const KeyType &key, const KeyComparator &comparator) const -> ValueType;
 
 		auto GetItem(int index) -> const MappingType &;
-
+		auto KeyIndex(const KeyType &key, const KeyComparator &comparator) const -> int;
 		/**
 		 *
 		 * @param index the index

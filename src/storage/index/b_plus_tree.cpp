@@ -205,12 +205,7 @@ namespace bustub {
 				bpm_->UnpinPage(left_page_id, true);
 				bpm_->UnpinPage(page->GetPage(), true);
 				// 实现DeleteInternalKey方法，往上递归
-				node->DeleteKeyIndex(j);
-				if (node->GetSize() >= std::ceil(node->GetMaxSize() / 2)) {
-					return;
-				} else {
-
-				}
+				DeleteInternalKey(node, j, txn);
 			}
 
 		}
@@ -223,6 +218,45 @@ namespace bustub {
 		if (node->GetSize() >= std::ceil(node->GetMaxSize() / 2)) {
 			return;
 		} else {
+			if (node->IsRootPage()) {
+				// TODO:?
+				return;
+			}
+			auto parent_page = bpm_->FetchPage(node->GetParentPage());
+			auto parent_page_node = reinterpret_cast<InternalPage *>(parent_page->GetData());
+			int j;
+			page_id_t left_page_id = INVALID_PAGE_ID, right_page_id = INVALID_PAGE_ID;
+			for (int i = 0; i < parent_page_node->GetSize(); ++i) {
+				if (parent_page_node->GetItem(i).second == node->GetPage()) {
+					j = i;
+					if (i > 0)left_page_id = node->GetItem(i - 1).second;
+					if (i + 1 < node->GetSize())right_page_id = node->GetItem(i + 1).second;
+					break;
+				}
+			}
+			if (left_page_id != INVALID_PAGE_ID) {
+				auto le_page = bpm_->FetchPage(left_page_id);
+				auto le_node = reinterpret_cast<InternalPage *> (le_page->GetData());
+				if (le_node->GetSize() > std::ceil(le_node->GetMaxSize() / 2)) {
+					node->InsertFrontNode(parent_page_node->GetItem(j));
+					parent_page_node->SetKeyAt(j, le_node->KeyAt(le_node->GetSize() - 1));
+					le_node->IncreaseSize(-1);
+					bpm_->UnpinPage(left_page_id, true);
+					bpm_->UnpinPage(parent_page->GetPageId(), true);
+					return;
+				} else {
+					le_node->MergeParentAndLRNode(node, parent_page_node->KeyAt(j));
+					bpm_->DeletePage(parent_page_node->GetPage());
+					bpm_->DeletePage(node->GetPage());
+					bpm_->UnpinPage(left_page_id, true);
+					bpm_->UnpinPage(node->GetPage(), true);
+					bpm_->UnpinPage(parent_page_node->GetPage(), true);
+					// 实现DeleteInternalKey方法，往上递归
+					DeleteInternalKey(node, j, txn);
+				}
+
+			}
+
 
 		}
 	}

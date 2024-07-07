@@ -75,6 +75,15 @@ namespace bustub {
 	}
 
 	INDEX_TEMPLATE_ARGUMENTS
+	void B_PLUS_TREE_INTERNAL_PAGE_TYPE::MergeParentAndLRNode(const B_PLUS_TREE_INTERNAL_PAGE_TYPE *node,
+															  const KeyType &parent_key) {
+		array_[GetSize()] = {parent_key, node->array_[0].second};
+		for (int i = 1; i < node->GetSize(); ++i) {
+			array_[i + GetSize()] = node->array_[i];
+		}
+	}
+
+	INDEX_TEMPLATE_ARGUMENTS
 	auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::GetItem(int index) -> const MappingType & { return array_[index]; }
 
 	INDEX_TEMPLATE_ARGUMENTS

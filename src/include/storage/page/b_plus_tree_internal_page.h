@@ -69,6 +69,8 @@ namespace bustub {
 
 		void DeleteKeyIndex(int index);
 
+		void MergeParentAndLRNode(const B_PLUS_TREE_INTERNAL_PAGE_TYPE *node, const KeyType &parent_key);
+
 		void Insert(const KeyType &key, const ValueType &value, const KeyComparator &comparator);
 
 		void InsertFrontNode(const MappingType &node);
@@ -85,7 +87,9 @@ namespace bustub {
 		auto Lookup(const KeyType &key, const KeyComparator &comparator) const -> ValueType;
 
 		auto GetItem(int index) -> const MappingType &;
+
 		auto KeyIndex(const KeyType &key, const KeyComparator &comparator) const -> int;
+
 		/**
 		 *
 		 * @param index the index

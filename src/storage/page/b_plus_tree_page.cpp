@@ -27,6 +27,7 @@ namespace bustub {
  * Helper methods to get/set size (number of key/value pairs stored in that
  * page)
  */
+// internal size表示实际的个数包括第一个，key的个数+1
 	auto BPlusTreePage::GetSize() const -> int { return size_; }
 
 	void BPlusTreePage::SetSize(int size) { size_ = size; }
@@ -40,7 +41,7 @@ namespace bustub {
 	auto BPlusTreePage::GetPage() const -> page_id_t {
 		return page_id_;
 	}
-	
+
 
 	void BPlusTreePage::SetPage(page_id_t page) {
 		page_id_ = page;

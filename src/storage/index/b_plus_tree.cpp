@@ -79,16 +79,16 @@ namespace bustub {
 	}
 
 	INDEX_TEMPLATE_ARGUMENTS
-	auto BPLUSTREE_TYPE::SplitInternalNode(InternalPage *leaf_node) -> InternalPage * {
+	auto BPLUSTREE_TYPE::SplitInternalNode(InternalPage *node) -> InternalPage * {
 		page_id_t pageId;
 		auto newLeafPage = bpm_->NewPage(&pageId);
-		auto root_page_leaf = reinterpret_cast<InternalPage *>(newLeafPage->GetData());
-		root_page_leaf->Init(pageId, INVALID_PAGE_ID, internal_max_size_);
-		root_page_leaf->CopyLeafData((leaf_node->GetMaxSize()) / 2 + 1, leaf_node);
-		root_page_leaf->SetSize(leaf_node->GetSize() - (leaf_node->GetMaxSize()) / 2 - 1);
-		leaf_node->SetSize((leaf_node->GetMaxSize()) / 2 + 1);
+		auto new_node = reinterpret_cast<InternalPage *>(newLeafPage->GetData());
+		new_node->Init(pageId, INVALID_PAGE_ID, internal_max_size_);
+		new_node->CopyLeafData((node->GetMaxSize()) / 2 + 1, node);
+		new_node->SetSize(node->GetSize() - (node->GetMaxSize()) / 2 - 1);
+		node->SetSize((node->GetMaxSize()) / 2 + 1);
 		bpm_->UnpinPage(newLeafPage->GetPageId(), true);
-		return root_page_leaf;
+		return new_node;
 	}
 
 	INDEX_TEMPLATE_ARGUMENTS
@@ -277,12 +277,12 @@ namespace bustub {
 		if (node->GetSize() < node->GetMaxSize()) {
 			new_node->SetParentPage(node->GetPage());
 			node->Insert(key, new_node->GetPage(), comparator_);
-//			std::cout << DrawBPlusTree() << std::endl;
 			bpm_->UnpinPage(p->GetPageId(), true);
 			bpm_->UnpinPage(new_node->GetPage(), true);
 			return;
 		}
 		node->Insert(key, new_node->GetPage(), comparator_);
+		std::cout << "internal insert tree:" << DrawBPlusTree() << std::endl;
 		auto k = node->KeyAt(node->GetMaxSize() / 2 + 1);
 		auto node1 = SplitInternalNode(node);
 		InsertToParent(k, node, node1, txn);

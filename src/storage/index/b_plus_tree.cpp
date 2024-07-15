@@ -76,6 +76,7 @@ namespace bustub {
         leaf_node->SetNextPageId(pageId);
         leaf_node->SetSize(leaf_node->GetMaxSize() / 2);
         bpm_->UnpinPage(leaf_node->GetPage(), true);
+        bpm_->UnpinPage(root_page_leaf->GetPage(), true);
         return root_page_leaf;
     }
 
@@ -277,20 +278,22 @@ namespace bustub {
             root_page->PopulateNewRoot(old_node->GetPage(), key, new_node->GetPage());
 
             root_page_id_ = pageId;
+            old_node = reinterpret_cast<InternalPage *>( bpm_->FetchPage(old_node->GetPage())->GetData());
+            new_node = reinterpret_cast<InternalPage *>( bpm_->FetchPage(new_node->GetPage())->GetData());
             old_node->SetParentPage(root_page_id_);
             new_node->SetParentPage(root_page_id_);
             std::cout << "after populate[root]" << DrawBPlusTree() << std::endl;
             bpm_->UnpinPage(root_page_id_, true);
             bpm_->UnpinPage(new_node->GetPage(), true);
+            bpm_->UnpinPage(old_node->GetPage(), true);
             return;
         }
         auto parent_node = bpm_->FetchPage(old_node->GetParentPage());
         auto pa_node = reinterpret_cast<InternalPage *>(parent_node->GetData());
         if (pa_node->GetSize() < pa_node->GetMaxSize()) {
-            new_node->SetParentPage(pa_node->GetPage());
             pa_node->Insert(key, new_node->GetPage(), comparator_);
             bpm_->UnpinPage(pa_node->GetPage(), true);
-            bpm_->UnpinPage(new_node->GetPage(), true);
+//            bpm_->UnpinPage(new_node->GetPage(), true);
             return;
         }
         pa_node->Insert(key, new_node->GetPage(), comparator_);
@@ -300,7 +303,7 @@ namespace bustub {
         auto node1 = SplitInternalNode(pa_node);
         std::cout << "after split insert tree:" << DrawBPlusTree() << std::endl;
         bpm_->UnpinPage(pa_node->GetPage(), true);
-        bpm_->UnpinPage(new_node->GetPage(), true);
+//        bpm_->UnpinPage(new_node->GetPage(), true);
         for (int i = 0; i < node1->GetSize(); i++) {
             auto ch = bpm_->FetchPage(node1->ValueAt(i));
             auto ch_page = reinterpret_cast<BPlusTreePage *>(ch->GetData());

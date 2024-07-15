@@ -33,100 +33,102 @@ namespace bustub {
  * | HEADER | KEY(1)+PAGE_ID(1) | KEY(2)+PAGE_ID(2) | ... | KEY(n)+PAGE_ID(n) |
  *  --------------------------------------------------------------------------
  */
-	INDEX_TEMPLATE_ARGUMENTS
-	class BPlusTreeInternalPage : public BPlusTreePage {
-	public:
-		// Deleted to disallow initialization
-		BPlusTreeInternalPage() = delete;
+    INDEX_TEMPLATE_ARGUMENTS
+    class BPlusTreeInternalPage : public BPlusTreePage {
+    public:
+        // Deleted to disallow initialization
+        BPlusTreeInternalPage() = delete;
 
-		BPlusTreeInternalPage(const BPlusTreeInternalPage &other) = delete;
+        BPlusTreeInternalPage(const BPlusTreeInternalPage &other) = delete;
 
-		/**
-		 * Writes the necessary header information to a newly created page, must be called after
-		 * the creation of a new page to make a valid BPlusTreeInternalPage
-		 * @param max_size Maximal size of the page
-		 */
-		void Init(page_id_t page, page_id_t parent_id, int max_size = INTERNAL_PAGE_SIZE);
+        /**
+         * Writes the necessary header information to a newly created page, must be called after
+         * the creation of a new page to make a valid BPlusTreeInternalPage
+         * @param max_size Maximal size of the page
+         */
+        void Init(page_id_t page, page_id_t parent_id, int max_size = INTERNAL_PAGE_SIZE);
 
-		/**
-		 * @param index The index of the key to get. Index must be non-zero.
-		 * @return Key at index
-		 */
-		auto KeyAt(int index) const -> KeyType;
+        /**
+         * @param index The index of the key to get. Index must be non-zero.
+         * @return Key at index
+         */
+        auto KeyAt(int index) const -> KeyType;
 
-		void CopyLeafData(int index, B_PLUS_TREE_INTERNAL_PAGE_TYPE *other);
+        void CopyLeafData(int index, B_PLUS_TREE_INTERNAL_PAGE_TYPE *other);
 
-		/**
-		 *
-		 * @param index The index of the key to set. Index must be non-zero.
-		 * @param key The new value for key
-		 */
-		void SetKeyAt(int index, const KeyType &key);
+        /**
+         *
+         * @param index The index of the key to set. Index must be non-zero.
+         * @param key The new value for key
+         */
+        void SetKeyAt(int index, const KeyType &key);
 
-		void SetValueAt(int index, const ValueType &valueType);
+        void SetValueAt(int index, const ValueType &valueType);
 
-		void CopyDataByIndex(int index, MappingType *array);
+        void CopyDataByIndex(int index, MappingType *array);
 
-		void DeleteKeyIndex(int index);
+        void DeleteKeyIndex(int index);
 
-		void MergeParentAndLRNode(const B_PLUS_TREE_INTERNAL_PAGE_TYPE *node, const KeyType &parent_key);
+        void MergeParentAndLRNode(const B_PLUS_TREE_INTERNAL_PAGE_TYPE *node, const KeyType &parent_key);
 
-		void Insert(const KeyType &key, const ValueType &value, const KeyComparator &comparator);
+        void Insert(const KeyType &key, const ValueType &value, const KeyComparator &comparator);
 
-		void InsertFrontNode(const MappingType &node);
+        void InsertFrontNode(const MappingType &node);
 
-		void PopulateNewRoot(const ValueType &old_value, const KeyType &new_key,
-							 const ValueType &new_value);
+        void PopulateNewRoot(const ValueType &old_value, const KeyType &new_key,
+                             const ValueType &new_value);
 
-		/**
-		 *
-		 * @param value the value to search for
-		 */
-		auto ValueIndex(const ValueType &value) const -> int;
+        /**
+         *
+         * @param value the value to search for
+         */
+        auto ValueIndex(const ValueType &value) const -> int;
 
-		auto Lookup(const KeyType &key, const KeyComparator &comparator) const -> ValueType;
+        auto Lookup(const KeyType &key, const KeyComparator &comparator) const -> ValueType;
 
-		auto GetItem(int index) -> const MappingType &;
+        auto GetItem(int index) -> const MappingType &;
 
-		auto KeyIndex(const KeyType &key, const KeyComparator &comparator) const -> int;
+        auto KeyIndex(const KeyType &key, const KeyComparator &comparator) const -> int;
 
-		/**
-		 *
-		 * @param index the index
-		 * @return the value at the index
-		 */
-		auto ValueAt(int index) const -> ValueType;
+        /**
+         *
+         * @param index the index
+         * @return the value at the index
+         */
+        auto ValueAt(int index) const -> ValueType;
 
-		/**
-		 * @brief For test only, return a string representing all keys in
-		 * this internal page, formatted as "(key1,key2,key3,...)"
-		 *
-		 * @return std::string
-		 */
-		auto ToString() const -> std::string {
-			std::string kstr = "(";
-			bool first = true;
+        /**
+         * @brief For test only, return a string representing all keys in
+         * this internal page, formatted as "(key1,key2,key3,...)"
+         *
+         * @return std::string
+         */
+        auto ToString() const -> std::string {
+            std::string kstr = "(";
+            bool first = true;
 
-			// first key of internal page is always invalid
-			for (int i = 1; i < GetSize(); i++) {
-				KeyType key = KeyAt(i);
-				if (first) {
-					first = false;
-				} else {
-					kstr.append(",");
-				}
+            // first key of internal page is always invalid
+            for (int i = 1; i < GetSize(); i++) {
+                KeyType key = KeyAt(i);
+                if (first) {
+                    first = false;
+                } else {
+                    kstr.append(",");
+                }
 
-				kstr.append(std::to_string(key.ToString()));
-			}
-			kstr.append(")");
-			kstr += "page:";
-			kstr += std::to_string(GetPage());
+                kstr.append(std::to_string(key.ToString()));
+            }
+            kstr.append(")");
+            kstr += "page:";
+            kstr += std::to_string(GetPage());
+            kstr += ";parent:";
+            kstr += std::to_string(GetParentPage());
 
-			return kstr;
-		}
+            return kstr;
+        }
 
-	private:
-		// Flexible array member for page data.
-		MappingType array_[0];
-	};
+    private:
+        // Flexible array member for page data.
+        MappingType array_[0];
+    };
 }  // namespace bustub

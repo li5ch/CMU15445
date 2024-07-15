@@ -69,10 +69,11 @@ namespace bustub {
         page_id_t pageId;
         auto newLeafPage = bpm_->NewPage(&pageId);
         auto root_page_leaf = reinterpret_cast<LeafPage *>(newLeafPage->GetData());
-        root_page_leaf->Init(pageId, INVALID_PAGE_ID, leaf_max_size_);
-        leaf_node->SetNextPageId(pageId);
+        root_page_leaf->Init(pageId, leaf_node->GetParentPage(), leaf_max_size_);
         root_page_leaf->CopyLeafData(leaf_node->GetMaxSize() / 2, leaf_node);
         root_page_leaf->SetSize(leaf_node->GetMaxSize() - (leaf_node->GetMaxSize()) / 2);
+        root_page_leaf->SetNextPageId(leaf_node->GetNextPageId());
+        leaf_node->SetNextPageId(pageId);
         leaf_node->SetSize(leaf_node->GetMaxSize() / 2);
         bpm_->UnpinPage(leaf_node->GetPage(), true);
         return root_page_leaf;
@@ -83,7 +84,7 @@ namespace bustub {
         page_id_t pageId;
         auto newLeafPage = bpm_->NewPage(&pageId);
         auto new_node = reinterpret_cast<InternalPage *>(newLeafPage->GetData());
-        new_node->Init(pageId, INVALID_PAGE_ID, internal_max_size_);
+        new_node->Init(pageId, node->GetParentPage(), internal_max_size_);
         new_node->CopyLeafData((node->GetMaxSize()) / 2 + 1, node);
         new_node->SetSize(node->GetSize() - (node->GetMaxSize()) / 2 - 1);
         node->SetSize((node->GetMaxSize()) / 2 + 1);
@@ -102,6 +103,7 @@ namespace bustub {
         while (!node->IsLeafPage()) {
             auto n = reinterpret_cast<const InternalPage *>(read_page_guard->GetData());
             auto v = n->Lookup(key, comparator_);
+            bpm_->UnpinPage(read_page_guard->GetPageId(), false);
             read_page_guard = bpm_->FetchPage(static_cast<page_id_t>(v));
             node = reinterpret_cast<const BPlusTreePage *>(read_page_guard->GetData());
         }
@@ -141,13 +143,20 @@ namespace bustub {
             auto leaf_node = Lookup(key);
             if (leaf_node) {
                 leaf_node->Insert(key, value, comparator_);
-                bpm_->UnpinPage(leaf_node->GetPage(), true);
+                // insert to parent 递归
+                std::cout << "insert leaf node1:" << leaf_node->GetPage() << DrawBPlusTree() << std::endl;
                 if (leaf_node->GetSize() >= leaf_node->GetMaxSize()) {
                     // split leaf node
                     auto newNode = SplitLeafNode(leaf_node);
                     // insert to parent 递归
+                    std::cout << "insert leaf node2" << DrawBPlusTree() << std::endl;
                     InsertToParent(newNode->KeyAt(0), leaf_node, newNode, txn);
+                } else {
+                    bpm_->UnpinPage(leaf_node->GetPage(), true);
                 }
+
+            } else {
+                bpm_->UnpinPage(leaf_node->GetPage(), false);
             }
 
             return false;
@@ -275,27 +284,30 @@ namespace bustub {
             bpm_->UnpinPage(new_node->GetPage(), true);
             return;
         }
-        auto p = bpm_->FetchPage(old_node->GetParentPage());
-        auto node = reinterpret_cast<InternalPage *>(p->GetData());
-        if (node->GetSize() < node->GetMaxSize()) {
-            new_node->SetParentPage(node->GetPage());
-            node->Insert(key, new_node->GetPage(), comparator_);
-            bpm_->UnpinPage(p->GetPageId(), true);
+        auto parent_node = bpm_->FetchPage(old_node->GetParentPage());
+        auto pa_node = reinterpret_cast<InternalPage *>(parent_node->GetData());
+        if (pa_node->GetSize() < pa_node->GetMaxSize()) {
+            new_node->SetParentPage(pa_node->GetPage());
+            pa_node->Insert(key, new_node->GetPage(), comparator_);
+            bpm_->UnpinPage(pa_node->GetPage(), true);
             bpm_->UnpinPage(new_node->GetPage(), true);
             return;
         }
-        node->Insert(key, new_node->GetPage(), comparator_);
-        std::cout << "internal insert tree:" << DrawBPlusTree() << std::endl;
-        auto k = node->KeyAt(node->GetMaxSize() / 2 + 1);
-        auto node1 = SplitInternalNode(node);
-        InsertToParent(k, node, node1, txn);
+        pa_node->Insert(key, new_node->GetPage(), comparator_);
+        std::cout << "page" << pa_node->GetPage() << "insert page" << new_node->GetPage() << "internal insert tree:"
+                  << DrawBPlusTree() << std::endl;
+        auto k = pa_node->KeyAt(pa_node->GetMaxSize() / 2 + 1);
+        auto node1 = SplitInternalNode(pa_node);
+        std::cout << "after split insert tree:" << DrawBPlusTree() << std::endl;
+        bpm_->UnpinPage(pa_node->GetPage(), true);
+        bpm_->UnpinPage(new_node->GetPage(), true);
         for (int i = 0; i < node1->GetSize(); i++) {
             auto ch = bpm_->FetchPage(node1->ValueAt(i));
             auto ch_page = reinterpret_cast<BPlusTreePage *>(ch->GetData());
             ch_page->SetParentPage(node1->GetPage());
             bpm_->UnpinPage(ch->GetPageId(), true);
         }
-        bpm_->UnpinPage(p->GetPageId(), true);
+        InsertToParent(k, pa_node, node1, txn);
         std::cout << "after" << DrawBPlusTree() << std::endl;
     }
 

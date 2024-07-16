@@ -11,7 +11,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "buffer/buffer_pool_manager.h"
-
+#include "common/logger.h"
 #include "common/exception.h"
 #include "common/macros.h"
 #include "storage/page/page_guard.h"
@@ -53,13 +53,14 @@ namespace bustub {
  * @return nullptr if no new pages could be created, otherwise pointer to new page
  */
 	auto BufferPoolManager::NewPage(page_id_t *page_id) -> Page * {
-		*page_id = AllocatePage();
-		std::scoped_lock<std::mutex> lock(latch_);
 
+		std::scoped_lock<std::mutex> lock(latch_);
+		*page_id = AllocatePage();
 		auto page = CreatePage(*page_id);
 
 		if (page == nullptr) {
 			next_page_id_--;
+			LOG_WARN("new page failed:%d", *page_id);
 			return nullptr;
 		}
 		return page;
@@ -88,10 +89,10 @@ namespace bustub {
 		if (page_table_.count(page_id) == 0) {
 			auto page = CreatePage(page_id);
 			if (!page) {
+				std::cout << "page id create fialed:" << page_id << std::endl;
 				return nullptr;
 			}
-			disk_manager_->ReadPage(page_id, page->data_);
-
+			disk_manager_->ReadPage(page_id, page->GetData());
 			return page;
 		} else {
 			auto c = page_table_[page_id];
@@ -127,7 +128,9 @@ namespace bustub {
 		pages_[fid].pin_count_--;
 		if (pages_[fid].pin_count_ == 0) {
 			replacer_->SetEvictable(fid, true);
-			pages_[fid].is_dirty_ = is_dirty;
+			if (is_dirty) {
+				pages_[fid].is_dirty_ = is_dirty;
+			}
 		}
 
 		return true;
@@ -229,34 +232,49 @@ namespace bustub {
 	}
 
 	auto BufferPoolManager::CreatePage(page_id_t page_id) -> Page * {
+		auto has_free_page = false;
+		for (size_t i = 0; i < pool_size_; i++) {
+			if (pages_[i].GetPinCount() == 0) {
+				has_free_page = true;
+				LOG_WARN("free page:%d", pages_[i].GetPageId());
+				break;
+			}
+		}
+		if (!has_free_page) {
+			return nullptr;
+		}
+
 		if (!free_list_.empty()) {
 			auto c = free_list_.front();
 			free_list_.pop_front();
 			page_table_[page_id] = c;
-			replacer_->RecordAccess(c, AccessType::Unknown);
+			replacer_->RecordAccess(c);
 			replacer_->SetEvictable(c, false);
 
 			pages_[c].page_id_ = page_id;
 			pages_[c].pin_count_ = 1;
+			LOG_WARN("got free page:%d", pages_[c].GetPageId());
 			return &pages_[c];
 		} else {
 			frame_id_t id;
 			auto c = replacer_->Evict(&id);
 			if (c) {
 				if (pages_[id].is_dirty_) {
-					disk_manager_->WritePage(id, pages_[id].GetData());
-					pages_[id].ResetMemory();
-					page_table_.erase(pages_[id].page_id_);
+					disk_manager_->WritePage(pages_[id].GetPageId(), pages_[id].GetData());
+					pages_[id].is_dirty_ = false;
 				}
+				pages_[id].ResetMemory();
+				page_table_.erase(pages_[id].page_id_);
 				page_table_[page_id] = id;
-				replacer_->RecordAccess(id, AccessType::Unknown);
-				replacer_->SetEvictable(id, false);
-				pages_[id].page_id_ = page_id;
 				pages_[id].pin_count_ = 1;
+				pages_[id].page_id_ = page_id;
+				replacer_->RecordAccess(id);
+				replacer_->SetEvictable(id, false);
+				LOG_WARN("got free frame page:%d", pages_[id].GetPageId());
 				return &pages_[id];
-			} else {
-				return nullptr;
 			}
+			LOG_WARN("page evict failed, page id:%d", page_id);
+			return nullptr;
 		}
 	}
 

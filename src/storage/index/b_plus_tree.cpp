@@ -76,8 +76,7 @@ namespace bustub {
 		root_page_leaf->SetNextPageId(leaf_node->GetNextPageId());
 		leaf_node->SetNextPageId(pageId);
 		leaf_node->SetSize(leaf_node->GetMaxSize() / 2);
-		bpm_->UnpinPage(leaf_node->GetPage(), true);
-		bpm_->UnpinPage(root_page_leaf->GetPage(), true);
+
 		return root_page_leaf;
 	}
 
@@ -90,7 +89,7 @@ namespace bustub {
 		new_node->CopyLeafData((node->GetMaxSize()) / 2 + 1, node);
 		new_node->SetSize(node->GetSize() - (node->GetMaxSize()) / 2 - 1);
 		node->SetSize((node->GetMaxSize()) / 2 + 1);
-		bpm_->UnpinPage(newLeafPage->GetPageId(), true);
+
 		return new_node;
 	}
 
@@ -102,12 +101,14 @@ namespace bustub {
 		(void) ctx;
 		auto root = GetRootPageId();
 		auto read_page_guard = bpm_->FetchPage(root);
+		bpm_->UnpinPage(read_page_guard->GetPageId(), false);
 		auto node = reinterpret_cast<const BPlusTreePage *>(read_page_guard->GetData());
 		while (!node->IsLeafPage()) {
 			auto n = reinterpret_cast<const InternalPage *>(read_page_guard->GetData());
 			auto v = n->Lookup(key, comparator_);
-			bpm_->UnpinPage(read_page_guard->GetPageId(), false);
+
 			read_page_guard = bpm_->FetchPage(static_cast<page_id_t>(v));
+			bpm_->UnpinPage(read_page_guard->GetPageId(), false);
 			node = reinterpret_cast<const BPlusTreePage *>(read_page_guard->GetData());
 		}
 		if (node->IsLeafPage()) {
@@ -145,6 +146,7 @@ namespace bustub {
 			// 递归向上分裂节点
 			auto leaf_node = Lookup(key);
 			if (leaf_node) {
+				leaf_node = reinterpret_cast<LeafPage *>(bpm_->FetchPage(leaf_node->GetPage())->GetData());
 				leaf_node->Insert(key, value, comparator_);
 				// insert to parent 递归
 				std::cout << "insert leaf node1:" << leaf_node->GetPage() << DrawBPlusTree() << std::endl;
@@ -152,8 +154,12 @@ namespace bustub {
 					// split leaf node
 					auto newNode = SplitLeafNode(leaf_node);
 					// insert to parent 递归
-					std::cout << "insert leaf node2" << DrawBPlusTree() << std::endl;
+					LOG_WARN("spilt leaf node:%d", newNode->GetPage());
+					std::cout << "after split leaf node" << DrawBPlusTree() << std::endl;
+					LOG_WARN("1spilt leaf node:%d", newNode->GetPage());
 					InsertToParent(newNode->KeyAt(0), leaf_node, newNode, txn);
+					bpm_->UnpinPage(leaf_node->GetPage(), true);
+					bpm_->UnpinPage(newNode->GetPage(), true);
 				} else {
 					bpm_->UnpinPage(leaf_node->GetPage(), true);
 				}
@@ -284,10 +290,8 @@ namespace bustub {
 			new_node = reinterpret_cast<InternalPage *>( bpm_->FetchPage(new_node->GetPage())->GetData());
 			old_node->SetParentPage(root_page_id_);
 			new_node->SetParentPage(root_page_id_);
-			std::cout << "after populate[root]" << DrawBPlusTree() << std::endl;
+//			std::cout << "after populate[root]" << DrawBPlusTree() << std::endl;
 			bpm_->UnpinPage(root_page_id_, true);
-			bpm_->UnpinPage(new_node->GetPage(), true);
-			bpm_->UnpinPage(old_node->GetPage(), true);
 			return;
 		}
 		auto parent_node = bpm_->FetchPage(old_node->GetParentPage());
@@ -298,13 +302,14 @@ namespace bustub {
 //            bpm_->UnpinPage(new_node->GetPage(), true);
 			return;
 		}
+		LOG_WARN("new node page:%d", new_node->GetPage());
 		pa_node->Insert(key, new_node->GetPage(), comparator_);
 		std::cout << "page" << pa_node->GetPage() << "insert page" << new_node->GetPage() << "internal insert tree:"
 				  << DrawBPlusTree() << std::endl;
 		auto k = pa_node->KeyAt(pa_node->GetMaxSize() / 2 + 1);
 		auto node1 = SplitInternalNode(pa_node);
 		std::cout << "after split insert tree:" << DrawBPlusTree() << std::endl;
-		bpm_->UnpinPage(pa_node->GetPage(), true);
+
 //        bpm_->UnpinPage(new_node->GetPage(), true);
 		for (int i = 0; i < node1->GetSize(); i++) {
 			auto ch = bpm_->FetchPage(node1->ValueAt(i));
@@ -313,9 +318,11 @@ namespace bustub {
 			bpm_->UnpinPage(ch->GetPageId(), true);
 		}
 		InsertToParent(k, pa_node, node1, txn);
+		bpm_->UnpinPage(pa_node->GetPage(), true);
+		bpm_->UnpinPage(node1->GetPage(), true);
 		std::cout << "after" << DrawBPlusTree() << std::endl;
 	}
-	
+
 
 /*****************************************************************************
  * INDEX ITERATOR

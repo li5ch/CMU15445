@@ -89,7 +89,7 @@ namespace bustub {
 		if (page_table_.count(page_id) == 0) {
 			auto page = CreatePage(page_id);
 			if (!page) {
-				std::cout << "page id create fialed:" << page_id << std::endl;
+				LOG_WARN("page %d create failed:", page_id);
 				return nullptr;
 			}
 			disk_manager_->ReadPage(page_id, page->GetData());
@@ -236,7 +236,7 @@ namespace bustub {
 		for (size_t i = 0; i < pool_size_; i++) {
 			if (pages_[i].GetPinCount() == 0) {
 				has_free_page = true;
-				LOG_WARN("free page:%d", pages_[i].GetPageId());
+//				LOG_WARN("free page:%d", pages_[i].GetPageId());
 				break;
 			}
 		}
@@ -253,7 +253,7 @@ namespace bustub {
 
 			pages_[c].page_id_ = page_id;
 			pages_[c].pin_count_ = 1;
-			LOG_WARN("got free page:%d", pages_[c].GetPageId());
+//			LOG_WARN("got free page:%d", pages_[c].GetPageId());
 			return &pages_[c];
 		} else {
 			frame_id_t id;
@@ -270,10 +270,10 @@ namespace bustub {
 				pages_[id].page_id_ = page_id;
 				replacer_->RecordAccess(id);
 				replacer_->SetEvictable(id, false);
-				LOG_WARN("got free frame page:%d", pages_[id].GetPageId());
+//				LOG_WARN("got free frame page:%d", pages_[id].GetPageId());
 				return &pages_[id];
 			}
-			LOG_WARN("page evict failed, page id:%d", page_id);
+//			LOG_WARN("page evict failed, page id:%d", page_id);
 			return nullptr;
 		}
 	}

@@ -109,16 +109,20 @@ namespace bustub {
 			auto v = n->Lookup(key, comparator_);
 			switch (operation_type) {
 				case 0:
-					if(n->GetSize()<n->GetMaxSize()-1){
-
+					if (n->GetSize() < n->GetMaxSize() - 1) {
+						read_page_guard->WUnlatch();
 					}
 					break;
 				case 1:
+					if (n->GetSize() > std::ceil(n->GetMaxSize() / 2)) {
+						read_page_guard->WUnlatch();
+					}
 					break;
 				default:
+					break;
 			}
-			if(n->GetSize())
-			bpm_->UnpinPage(read_page_guard->GetPageId(), false);
+			if (n->GetSize())
+				bpm_->UnpinPage(read_page_guard->GetPageId(), false);
 			read_page_guard->WUnlatch();
 			read_page_guard = bpm_->FetchPage(static_cast<page_id_t>(v));
 			read_page_guard->RLatch();

@@ -101,18 +101,18 @@ namespace bustub {
         (void) ctx;
         auto root = GetRootPageId();
         auto read_page_guard = bpm_->FetchPage(root);
-        bpm_->UnpinPage(read_page_guard->GetPageId(), false);
+
         auto node = reinterpret_cast<const BPlusTreePage *>(read_page_guard->GetData());
         while (!node->IsLeafPage()) {
             auto n = reinterpret_cast<const InternalPage *>(read_page_guard->GetData());
             auto v = n->Lookup(key, comparator_);
-
-            read_page_guard = bpm_->FetchPage(static_cast<page_id_t>(v));
             bpm_->UnpinPage(read_page_guard->GetPageId(), false);
+            read_page_guard = bpm_->FetchPage(static_cast<page_id_t>(v));
             node = reinterpret_cast<const BPlusTreePage *>(read_page_guard->GetData());
         }
         if (node->IsLeafPage()) {
             auto n = reinterpret_cast<LeafPage *>(read_page_guard->GetData());
+            bpm_->UnpinPage(read_page_guard->GetPageId(), false);
             return n;
         }
         return nullptr;
@@ -149,14 +149,14 @@ namespace bustub {
                 leaf_node = reinterpret_cast<LeafPage *>(bpm_->FetchPage(leaf_node->GetPage())->GetData());
                 leaf_node->Insert(key, value, comparator_);
                 // insert to parent 递归
-                std::cout << "insert leaf node1:" << leaf_node->GetPage() << DrawBPlusTree() << std::endl;
+//                std::cout << "insert leaf node1:" << leaf_node->GetPage() << DrawBPlusTree() << std::endl;
                 if (leaf_node->GetSize() >= leaf_node->GetMaxSize()) {
                     // split leaf node
                     auto newNode = SplitLeafNode(leaf_node);
                     // insert to parent 递归
                     LOG_WARN("spilt leaf node:%d", newNode->GetPage());
-                    std::cout << "after split leaf node" << DrawBPlusTree() << std::endl;
-                    LOG_WARN("1spilt leaf node:%d", newNode->GetPage());
+//                    std::cout << "after split leaf node" << DrawBPlusTree() << std::endl;
+//                    LOG_WARN("1spilt leaf node:%d", newNode->GetPage());
                     InsertToParent(newNode->KeyAt(0), leaf_node, newNode, txn);
                     bpm_->UnpinPage(leaf_node->GetPage(), true);
                     bpm_->UnpinPage(newNode->GetPage(), true);
@@ -189,22 +189,26 @@ namespace bustub {
         Context ctx;
         (void) ctx;
         auto page = Lookup(key);
+        page = reinterpret_cast<LeafPage *>(bpm_->FetchPage(page->GetPage()));
         auto ok = page->DeleteKey(key, comparator_);
-        if (ok) {
-            bpm_->UnpinPage(page->GetPage(), true);
-        }
-        if (page->GetSize() >= std::ceil(page->GetMaxSize() / 2)) {
+        if (!ok) {
+            bpm_->UnpinPage(page->GetPage(), false);
             return;
         }
+        if (page->GetSize() >= std::ceil(page->GetMaxSize() / 2)) {
+            bpm_->UnpinPage(page->GetPage(), true);
+            return;
+        }
+
         auto parent_page = bpm_->FetchPage(page->GetParentPage());
-        auto node = reinterpret_cast<InternalPage *>(parent_page->GetData());
-        page_id_t left_page_id = INVALID_PAGE_ID;
+        auto parent_node = reinterpret_cast<InternalPage *>(parent_page->GetData());
+        page_id_t left_page_id = INVALID_PAGE_ID, right_page_id = INVALID_PAGE_ID;
         int j;
-        for (int i = 0; i < node->GetSize(); ++i) {
-            if (node->GetItem(i).second == page->GetPage()) {
+        for (int i = 0; i < parent_node->GetSize(); ++i) {
+            if (parent_node->GetItem(i).second == page->GetPage()) {
                 j = i;
-                if (i > 0) left_page_id = node->GetItem(i - 1).second;
-//                if (i + 1 < node->GetSize()) right_page_id = node->GetItem(i + 1).second;
+                if (i > 0) left_page_id = parent_node->GetItem(i - 1).second;
+                if (i + 1 < parent_node->GetSize()) right_page_id = parent_node->GetItem(i + 1).second;
                 break;
             }
         }
@@ -213,18 +217,43 @@ namespace bustub {
             auto le_node = reinterpret_cast<LeafPage *>(le_page->GetData());
             if (le_node->GetSize() > std::ceil(le_node->GetMaxSize() / 2)) {
                 page->InsertFrontNode(le_node->GetItem(le_node->GetSize() - 1));
-                node->SetKeyAt(j, le_node->KeyAt(le_node->GetSize() - 1));
+                parent_node->SetKeyAt(j, le_node->KeyAt(le_node->GetSize() - 1));
                 le_node->IncreaseSize(-1);
                 bpm_->UnpinPage(left_page_id, true);
-                bpm_->UnpinPage(node->GetPage(), true);
+                bpm_->UnpinPage(parent_node->GetPage(), true);
+                bpm_->UnpinPage(page->GetPage(), true);
                 return;
             } else {
                 le_node->MergeRightNode(page);
                 bpm_->DeletePage(page->GetPage());
                 bpm_->UnpinPage(left_page_id, true);
+                bpm_->UnpinPage(page->GetPage(), true);
                 // 实现DeleteInternalKey方法，往上递归
-                node->DeleteKeyIndex(j);
-                RebalanceInternalKey(node, txn);
+                parent_node->DeleteKeyIndex(j);
+                RebalanceInternalKey(parent_node, txn);
+                return;
+            }
+        }
+        if (right_page_id != INVALID_PAGE_ID) {
+            auto le_page = bpm_->FetchPage(right_page_id);
+            auto le_node = reinterpret_cast<LeafPage *>(le_page->GetData());
+            if (le_node->GetSize() > std::ceil(le_node->GetMaxSize() / 2)) {
+                page->InsertFrontNode(le_node->GetItem(le_node->GetSize() - 1));
+                parent_node->SetKeyAt(j, le_node->KeyAt(le_node->GetSize() - 1));
+                le_node->IncreaseSize(-1);
+                bpm_->UnpinPage(right_page_id, true);
+                bpm_->UnpinPage(parent_node->GetPage(), true);
+                bpm_->UnpinPage(page->GetPage(), true);
+                return;
+            } else {
+                le_node->MergeRightNode(page);
+                bpm_->DeletePage(page->GetPage());
+                bpm_->UnpinPage(right_page_id, true);
+                bpm_->UnpinPage(page->GetPage(), true);
+                // 实现DeleteInternalKey方法，往上递归
+                parent_node->DeleteKeyIndex(j);
+                RebalanceInternalKey(parent_node, txn);
+                return;
             }
         }
     }
@@ -241,12 +270,12 @@ namespace bustub {
             auto parent_page = bpm_->FetchPage(node->GetParentPage());
             auto parent_page_node = reinterpret_cast<InternalPage *>(parent_page->GetData());
             int j;
-            page_id_t left_page_id = INVALID_PAGE_ID;
+            page_id_t left_page_id = INVALID_PAGE_ID, right_page_id = INVALID_PAGE_ID;
             for (int i = 0; i <= parent_page_node->GetSize(); ++i) {
                 if (parent_page_node->GetItem(i).second == node->GetPage()) {
                     j = i;
                     if (i > 0) left_page_id = node->GetItem(i - 1).second;
-//					if (i + 1 < node->GetSize()) right_page_id = node->GetItem(i + 1).second;
+                    if (i + 1 < node->GetSize()) right_page_id = node->GetItem(i + 1).second;
                     break;
                 }
             }
@@ -267,6 +296,27 @@ namespace bustub {
                     bpm_->UnpinPage(left_page_id, true);
                     // 实现DeleteInternalKey方法，往上递归
                     RebalanceInternalKey(node, txn);
+                    return;
+                }
+            }
+            if (right_page_id != INVALID_PAGE_ID) {
+                auto le_page = bpm_->FetchPage(right_page_id);
+                auto le_node = reinterpret_cast<InternalPage *>(le_page->GetData());
+                if (le_node->GetSize() > std::ceil(le_node->GetMaxSize() / 2)) {
+                    node->InsertFrontNode(parent_page_node->GetItem(j));
+                    parent_page_node->SetKeyAt(j, le_node->KeyAt(le_node->GetSize() - 1));
+                    le_node->IncreaseSize(-1);
+                    bpm_->UnpinPage(right_page_id, true);
+                    bpm_->UnpinPage(parent_page->GetPageId(), true);
+                    return;
+                } else {
+                    le_node->MergeParentAndLRNode(node, parent_page_node->KeyAt(j));
+                    bpm_->DeletePage(parent_page_node->GetPage());
+                    bpm_->DeletePage(node->GetPage());
+                    bpm_->UnpinPage(right_page_id, true);
+                    // 实现DeleteInternalKey方法，往上递归
+                    RebalanceInternalKey(node, txn);
+                    return;
                 }
             }
         }
@@ -280,7 +330,6 @@ namespace bustub {
             auto page = bpm_->NewPage(&pageId);
             //    WritePageGuard guard = bpm_->FetchPageWrite(pageId);
             auto root_page = reinterpret_cast<InternalPage *>(page->GetData());
-            // TODO:打印
             root_page->Init(pageId, INVALID_PAGE_ID, internal_max_size_);
 //            std::cout << "before[root]" << DrawBPlusTree() << std::endl;
             root_page->PopulateNewRoot(old_node->GetPage(), key, new_node->GetPage());

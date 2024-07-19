@@ -218,7 +218,7 @@ namespace bustub {
 		delete bpm;
 	}
 
-	TEST(BPlusTreeConcurrentTest, DISABLED_DeleteTest1) {
+	TEST(BPlusTreeConcurrentTest, DeleteTest1) {
 		// create KeyComparator and index schema
 		auto key_schema = ParseCreateStatement("a bigint");
 		GenericComparator<8> comparator(key_schema.get());
@@ -257,7 +257,7 @@ namespace bustub {
 		delete bpm;
 	}
 
-	TEST(BPlusTreeConcurrentTest, DISABLED_DeleteTest2) {
+	TEST(BPlusTreeConcurrentTest, DeleteTest2) {
 		// create KeyComparator and index schema
 		auto key_schema = ParseCreateStatement("a bigint");
 		GenericComparator<8> comparator(key_schema.get());
@@ -296,7 +296,7 @@ namespace bustub {
 		delete bpm;
 	}
 
-	TEST(BPlusTreeConcurrentTest, DISABLED_MixTest1) {
+	TEST(BPlusTreeConcurrentTest, MixTest1) {
 		// create KeyComparator and index schema
 		auto key_schema = ParseCreateStatement("a bigint");
 		GenericComparator<8> comparator(key_schema.get());
@@ -337,7 +337,7 @@ namespace bustub {
 		delete bpm;
 	}
 
-	TEST(BPlusTreeConcurrentTest, DISABLED_MixTest2) {
+	TEST(BPlusTreeConcurrentTest, MixTest2) {
 		// create KeyComparator and index schema
 		auto key_schema = ParseCreateStatement("a bigint");
 		GenericComparator<8> comparator(key_schema.get());

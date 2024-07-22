@@ -134,7 +134,7 @@ namespace bustub {
             }
 
             read_page_guard = bpm_->FetchPage(static_cast<page_id_t>(v));
-            read_page_guard->WLatch();
+            read_page_guard->WLatch(); // TODO:阻塞
             txn->AddIntoPageSet(read_page_guard);
             node = reinterpret_cast<const BPlusTreePage *>(read_page_guard->GetData());
         }
@@ -179,7 +179,10 @@ namespace bustub {
             if (leaf_node) {
                 auto leaf_page = bpm_->FetchPage(leaf_node->GetPage());
                 leaf_node = reinterpret_cast<LeafPage *>(leaf_page->GetData());
-                leaf_node->Insert(key, value, comparator_);
+                auto result = leaf_node->Insert(key, value, comparator_);
+                if (!result) {
+                    return false;
+                }
                 // insert to parent 递归
 //                std::cout << "insert leaf node1:" << leaf_node->GetPage() << DrawBPlusTree() << std::endl;
                 if (leaf_node->GetSize() >= leaf_node->GetMaxSize()) {
@@ -187,17 +190,20 @@ namespace bustub {
                     Page *newPage = nullptr;
                     auto newNode = SplitLeafNode(leaf_node, newPage);
                     // insert to parent 递归
-                    LOG_WARN("spilt leaf node:%d", newNode->GetPage());
+                    LOG_INFO("spilt leaf node:%d", newNode->GetPage());
+                    LOG_INFO("spilt leaf node tree:%s", DrawBPlusTree().c_str());
 //                    std::cout << "after split leaf node" << DrawBPlusTree() << std::endl;
-//                    LOG_WARN("1spilt leaf node:%d", newNode->GetPage());
+                    LOG_WARN("1spilt leaf node:%d", newNode->GetPage());
                     InsertToParent(newNode->KeyAt(0), leaf_node, newNode, txn);
 //                    leaf_page->WUnlatch();
                     ReleaseLatchFromQueue(txn);
                     bpm_->UnpinPage(leaf_node->GetPage(), true);
                     bpm_->UnpinPage(newNode->GetPage(), true);
+                    return true;
                 } else {
                     ReleaseLatchFromQueue(txn);
                     bpm_->UnpinPage(leaf_node->GetPage(), true);
+                    return true;
                 }
 
             } else {
@@ -400,6 +406,7 @@ namespace bustub {
             old_node->SetParentPage(root_page_id_);
             new_node->SetParentPage(root_page_id_);
             bpm_->UnpinPage(root_page_id_, true);
+            LOG_INFO("tree5:%s", DrawBPlusTree().c_str());
             return;
         }
         auto parent_page = bpm_->FetchPage(old_node->GetParentPage());
@@ -410,22 +417,22 @@ namespace bustub {
             ReleaseLatchFromQueue(txn);
             return;
         }
-
+        LOG_INFO("tree42:");
         pa_node->Insert(key, new_node->GetPage(), comparator_);
+        LOG_INFO("tree42:");
         auto k = pa_node->KeyAt(pa_node->GetMaxSize() / 2 + 1);
         Page *new_page = nullptr;
         auto node1 = SplitInternalNode(pa_node, new_page);
 
         for (int i = 0; i < node1->GetSize(); i++) {
             auto ch = bpm_->FetchPage(node1->ValueAt(i));
-            ch->WLatch();
             auto ch_page = reinterpret_cast<BPlusTreePage *>(ch->GetData());
-
             ch_page->SetParentPage(node1->GetPage());
-            ch->WUnlatch();
             bpm_->UnpinPage(ch->GetPageId(), true);
         }
+//        LOG_INFO("tree2:%s", DrawBPlusTree().c_str());
         InsertToParent(k, pa_node, node1, txn);
+//        LOG_INFO("tree3:%s", DrawBPlusTree().c_str());
         ReleaseLatchFromQueue(txn);
         bpm_->UnpinPage(pa_node->GetPage(), true);
         bpm_->UnpinPage(node1->GetPage(), true);

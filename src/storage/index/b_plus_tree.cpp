@@ -85,7 +85,7 @@ namespace bustub {
 	}
 
 	INDEX_TEMPLATE_ARGUMENTS
-	auto BPLUSTREE_TYPE::SplitInternalNode(InternalPage *node, Page *&new_page) -> InternalPage * {
+	auto BPLUSTREE_TYPE::SplitInternalNode(InternalPage *node) -> InternalPage * {
 		page_id_t pageId;
 		auto newLeafPage = bpm_->NewPage(&pageId);
 		auto new_node = reinterpret_cast<InternalPage *>(newLeafPage->GetData());
@@ -400,7 +400,6 @@ namespace bustub {
 			old_node->SetParentPage(root_page_id_);
 			new_node->SetParentPage(root_page_id_);
 			bpm_->UnpinPage(root_page_id_, true);
-			LOG_INFO("tree5:%s", DrawBPlusTree().c_str());
 			return;
 		}
 		auto parent_page = bpm_->FetchPage(old_node->GetParentPage());
@@ -411,12 +410,10 @@ namespace bustub {
 			ReleaseLatchFromQueue(txn);
 			return;
 		}
-		LOG_INFO("tree42:");
+
 		pa_node->Insert(key, new_node->GetPage(), comparator_);
-		LOG_INFO("tree42:");
 		auto k = pa_node->KeyAt(pa_node->GetMaxSize() / 2 + 1);
-		Page *new_page = nullptr;
-		auto node1 = SplitInternalNode(pa_node, new_page);
+		auto node1 = SplitInternalNode(pa_node);
 
 		for (int i = 0; i < node1->GetSize(); i++) {
 			auto ch = bpm_->FetchPage(node1->ValueAt(i));

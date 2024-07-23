@@ -94,7 +94,7 @@ namespace bustub {
 
 		auto SplitLeafNode(LeafPage *node) -> LeafPage *;
 
-		auto SplitInternalNode(InternalPage *node, Page *&page) -> InternalPage *;
+		auto SplitInternalNode(InternalPage *node) -> InternalPage *;
 
 		// Index iterator
 		auto Begin() -> INDEXITERATOR_TYPE;

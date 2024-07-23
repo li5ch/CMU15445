@@ -71,10 +71,9 @@ namespace bustub {
 
 
 	INDEX_TEMPLATE_ARGUMENTS
-	auto BPLUSTREE_TYPE::SplitLeafNode(LeafPage *leaf_node, Page *&new_page) -> LeafPage * {
+	auto BPLUSTREE_TYPE::SplitLeafNode(LeafPage *leaf_node) -> LeafPage * {
 		page_id_t pageId;
 		auto newLeafPage = bpm_->NewPage(&pageId);
-//        newLeafPage->WLatch();
 		auto root_page_leaf = reinterpret_cast<LeafPage *>(newLeafPage->GetData());
 		root_page_leaf->Init(pageId, leaf_node->GetParentPage(), leaf_max_size_);
 		root_page_leaf->CopyLeafData(leaf_node->GetMaxSize() / 2, leaf_node);
@@ -82,7 +81,6 @@ namespace bustub {
 		root_page_leaf->SetNextPageId(leaf_node->GetNextPageId());
 		leaf_node->SetNextPageId(pageId);
 		leaf_node->SetSize(leaf_node->GetMaxSize() / 2);
-		new_page = newLeafPage;
 		return root_page_leaf;
 	}
 
@@ -90,7 +88,6 @@ namespace bustub {
 	auto BPLUSTREE_TYPE::SplitInternalNode(InternalPage *node, Page *&new_page) -> InternalPage * {
 		page_id_t pageId;
 		auto newLeafPage = bpm_->NewPage(&pageId);
-		newLeafPage->WLatch();
 		auto new_node = reinterpret_cast<InternalPage *>(newLeafPage->GetData());
 		new_node->Init(pageId, node->GetParentPage(), internal_max_size_);
 		new_node->CopyLeafData((node->GetMaxSize()) / 2 + 1, node);
@@ -109,7 +106,9 @@ namespace bustub {
 		(void) ctx;
 		auto root = GetRootPageId();
 		auto read_page_guard = bpm_->FetchPage(root);
+		LOG_INFO("begin lock page:%d", read_page_guard->GetPageId());
 		read_page_guard->WLatch();
+		LOG_INFO("lock page:%d", read_page_guard->GetPageId());
 		txn->AddIntoPageSet(read_page_guard);
 		auto node = reinterpret_cast<const BPlusTreePage *>(read_page_guard->GetData());
 		while (!node->IsLeafPage()) {
@@ -133,22 +132,10 @@ namespace bustub {
 					break;
 			}
 
-<<<<<<< HEAD
-            read_page_guard = bpm_->FetchPage(static_cast<page_id_t>(v));
-            read_page_guard->WLatch(); // TODO:阻塞
-            txn->AddIntoPageSet(read_page_guard);
-            node = reinterpret_cast<const BPlusTreePage *>(read_page_guard->GetData());
-        }
-        if (node->IsLeafPage()) {
-            auto n = reinterpret_cast<LeafPage *>(read_page_guard->GetData());
-            bpm_->UnpinPage(read_page_guard->GetPageId(), false);
-            return n;
-        }
-        return nullptr;
-    }
-=======
 			read_page_guard = bpm_->FetchPage(static_cast<page_id_t>(v));
-			read_page_guard->WLatch();
+			LOG_INFO("begin lock page:%d", read_page_guard->GetPageId());
+			read_page_guard->WLatch(); // TODO:阻塞
+			LOG_INFO("lock page:%d", read_page_guard->GetPageId());
 			txn->AddIntoPageSet(read_page_guard);
 			node = reinterpret_cast<const BPlusTreePage *>(read_page_guard->GetData());
 		}
@@ -159,7 +146,7 @@ namespace bustub {
 		}
 		return nullptr;
 	}
->>>>>>> bd038c9 (B tree:begin concurrent)
+
 
 /*****************************************************************************
  * INSERTION
@@ -171,57 +158,6 @@ namespace bustub {
  * @return: since we only support unique key, if user try to insert duplicate
  * keys return false, otherwise return true.
  */
-<<<<<<< HEAD
-    INDEX_TEMPLATE_ARGUMENTS
-    auto BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transaction *txn) -> bool {
-        // Declaration of context instance.
-        Context ctx;
-        (void) ctx;
-        root_page_id_latch_.WLock();
-        txn->AddIntoPageSet(nullptr);
-        if (IsEmpty()) {
-            page_id_t pageId;
-            auto page = bpm_->NewPage(&pageId);
-            auto root_page_leaf = reinterpret_cast<LeafPage *>(page->GetData());
-            root_page_leaf->Init(pageId, INVALID_PAGE_ID, leaf_max_size_);
-            root_page_id_ = pageId;
-            root_page_leaf->Insert(key, value, comparator_);
-            ReleaseLatchFromQueue(txn);
-            bpm_->UnpinPage(page->GetPageId(), true);
-            return true;
-        } else {
-            // 递归向上分裂节点
-            auto leaf_node = Lookup(key, 0, txn);
-            if (leaf_node) {
-                auto leaf_page = bpm_->FetchPage(leaf_node->GetPage());
-                leaf_node = reinterpret_cast<LeafPage *>(leaf_page->GetData());
-                auto result = leaf_node->Insert(key, value, comparator_);
-                if (!result) {
-                    return false;
-                }
-                // insert to parent 递归
-//                std::cout << "insert leaf node1:" << leaf_node->GetPage() << DrawBPlusTree() << std::endl;
-                if (leaf_node->GetSize() >= leaf_node->GetMaxSize()) {
-                    // split leaf node
-                    Page *newPage = nullptr;
-                    auto newNode = SplitLeafNode(leaf_node, newPage);
-                    // insert to parent 递归
-                    LOG_INFO("spilt leaf node:%d", newNode->GetPage());
-                    LOG_INFO("spilt leaf node tree:%s", DrawBPlusTree().c_str());
-//                    std::cout << "after split leaf node" << DrawBPlusTree() << std::endl;
-                    LOG_WARN("1spilt leaf node:%d", newNode->GetPage());
-                    InsertToParent(newNode->KeyAt(0), leaf_node, newNode, txn);
-//                    leaf_page->WUnlatch();
-                    ReleaseLatchFromQueue(txn);
-                    bpm_->UnpinPage(leaf_node->GetPage(), true);
-                    bpm_->UnpinPage(newNode->GetPage(), true);
-                    return true;
-                } else {
-                    ReleaseLatchFromQueue(txn);
-                    bpm_->UnpinPage(leaf_node->GetPage(), true);
-                    return true;
-                }
-=======
 	INDEX_TEMPLATE_ARGUMENTS
 	auto BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transaction *txn) -> bool {
 		// Declaration of context instance.
@@ -245,27 +181,30 @@ namespace bustub {
 			if (leaf_node) {
 				auto leaf_page = bpm_->FetchPage(leaf_node->GetPage());
 				leaf_node = reinterpret_cast<LeafPage *>(leaf_page->GetData());
-				leaf_node->Insert(key, value, comparator_);
+				auto result = leaf_node->Insert(key, value, comparator_);
+				if (!result) {
+					return false;
+				}
 				// insert to parent 递归
 //                std::cout << "insert leaf node1:" << leaf_node->GetPage() << DrawBPlusTree() << std::endl;
 				if (leaf_node->GetSize() >= leaf_node->GetMaxSize()) {
 					// split leaf node
-					Page *newPage = nullptr;
-					auto newNode = SplitLeafNode(leaf_node, newPage);
+					auto newNode = SplitLeafNode(leaf_node);
 					// insert to parent 递归
-//					LOG_WARN("spilt leaf node:%d", newNode->GetPage());
+					LOG_INFO("spilt leaf node:%d", newNode->GetPage());
+					LOG_INFO("spilt leaf node tree:%s", DrawBPlusTree().c_str());
 //                    std::cout << "after split leaf node" << DrawBPlusTree() << std::endl;
-//                    LOG_WARN("1spilt leaf node:%d", newNode->GetPage());
+					LOG_WARN("1spilt leaf node:%d", newNode->GetPage());
 					InsertToParent(newNode->KeyAt(0), leaf_node, newNode, txn);
-//                    leaf_page->WUnlatch();
 					ReleaseLatchFromQueue(txn);
 					bpm_->UnpinPage(leaf_node->GetPage(), true);
 					bpm_->UnpinPage(newNode->GetPage(), true);
+					return true;
 				} else {
 					ReleaseLatchFromQueue(txn);
 					bpm_->UnpinPage(leaf_node->GetPage(), true);
+					return true;
 				}
->>>>>>> bd038c9 (B tree:begin concurrent)
 
 			} else {
 				ReleaseLatchFromQueue(txn);
@@ -293,6 +232,7 @@ namespace bustub {
 			if (page == nullptr) {
 				root_page_id_latch_.WUnlock();
 			} else {
+				LOG_INFO("page:%d unlock", page->GetPageId());
 				page->WUnlatch();
 			}
 			txn->GetPageSet()->pop_front();
@@ -456,41 +396,41 @@ namespace bustub {
 			root_page->Init(pageId, INVALID_PAGE_ID, internal_max_size_);
 			root_page->PopulateNewRoot(old_node->GetPage(), key, new_node->GetPage());
 
-            root_page_id_ = pageId;
-            old_node->SetParentPage(root_page_id_);
-            new_node->SetParentPage(root_page_id_);
-            bpm_->UnpinPage(root_page_id_, true);
-            LOG_INFO("tree5:%s", DrawBPlusTree().c_str());
-            return;
-        }
-        auto parent_page = bpm_->FetchPage(old_node->GetParentPage());
-        auto pa_node = reinterpret_cast<InternalPage *>(parent_page->GetData());
-        if (pa_node->GetSize() < pa_node->GetMaxSize()) {
-            pa_node->Insert(key, new_node->GetPage(), comparator_);
-            bpm_->UnpinPage(pa_node->GetPage(), true);
-            ReleaseLatchFromQueue(txn);
-            return;
-        }
-        LOG_INFO("tree42:");
-        pa_node->Insert(key, new_node->GetPage(), comparator_);
-        LOG_INFO("tree42:");
-        auto k = pa_node->KeyAt(pa_node->GetMaxSize() / 2 + 1);
-        Page *new_page = nullptr;
-        auto node1 = SplitInternalNode(pa_node, new_page);
+			root_page_id_ = pageId;
+			old_node->SetParentPage(root_page_id_);
+			new_node->SetParentPage(root_page_id_);
+			bpm_->UnpinPage(root_page_id_, true);
+			LOG_INFO("tree5:%s", DrawBPlusTree().c_str());
+			return;
+		}
+		auto parent_page = bpm_->FetchPage(old_node->GetParentPage());
+		auto pa_node = reinterpret_cast<InternalPage *>(parent_page->GetData());
+		if (pa_node->GetSize() < pa_node->GetMaxSize()) {
+			pa_node->Insert(key, new_node->GetPage(), comparator_);
+			bpm_->UnpinPage(pa_node->GetPage(), true);
+			ReleaseLatchFromQueue(txn);
+			return;
+		}
+		LOG_INFO("tree42:");
+		pa_node->Insert(key, new_node->GetPage(), comparator_);
+		LOG_INFO("tree42:");
+		auto k = pa_node->KeyAt(pa_node->GetMaxSize() / 2 + 1);
+		Page *new_page = nullptr;
+		auto node1 = SplitInternalNode(pa_node, new_page);
 
-        for (int i = 0; i < node1->GetSize(); i++) {
-            auto ch = bpm_->FetchPage(node1->ValueAt(i));
-            auto ch_page = reinterpret_cast<BPlusTreePage *>(ch->GetData());
-            ch_page->SetParentPage(node1->GetPage());
-            bpm_->UnpinPage(ch->GetPageId(), true);
-        }
+		for (int i = 0; i < node1->GetSize(); i++) {
+			auto ch = bpm_->FetchPage(node1->ValueAt(i));
+			auto ch_page = reinterpret_cast<BPlusTreePage *>(ch->GetData());
+			ch_page->SetParentPage(node1->GetPage());
+			bpm_->UnpinPage(ch->GetPageId(), true);
+		}
 //        LOG_INFO("tree2:%s", DrawBPlusTree().c_str());
-        InsertToParent(k, pa_node, node1, txn);
+		InsertToParent(k, pa_node, node1, txn);
 //        LOG_INFO("tree3:%s", DrawBPlusTree().c_str());
-        ReleaseLatchFromQueue(txn);
-        bpm_->UnpinPage(pa_node->GetPage(), true);
-        bpm_->UnpinPage(node1->GetPage(), true);
-    }
+		ReleaseLatchFromQueue(txn);
+		bpm_->UnpinPage(pa_node->GetPage(), true);
+		bpm_->UnpinPage(node1->GetPage(), true);
+	}
 
 
 /*****************************************************************************

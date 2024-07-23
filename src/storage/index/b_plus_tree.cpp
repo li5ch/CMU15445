@@ -119,19 +119,20 @@ namespace bustub {
 					// insert
 					if (n->GetSize() < n->GetMaxSize()) {
 						ReleaseLatchFromQueue(txn);
-						bpm_->UnpinPage(read_page_guard->GetPageId(), false);
+//						bpm_->UnpinPage(read_page_guard->GetPageId(), false);
 					}
 					break;
 				case 1:
 					if (n->GetSize() > std::ceil(n->GetMaxSize() / 2)) {
 						ReleaseLatchFromQueue(txn);
-						bpm_->UnpinPage(read_page_guard->GetPageId(), false);
+//						bpm_->UnpinPage(read_page_guard->GetPageId(), false);
 					}
 					break;
 				default:
+
 					break;
 			}
-
+			bpm_->UnpinPage(read_page_guard->GetPageId(), false);
 			read_page_guard = bpm_->FetchPage(static_cast<page_id_t>(v));
 			LOG_INFO("begin lock page:%d", read_page_guard->GetPageId());
 			read_page_guard->WLatch(); // TODO:阻塞
@@ -192,7 +193,7 @@ namespace bustub {
 					auto newNode = SplitLeafNode(leaf_node);
 					// insert to parent 递归
 					LOG_INFO("spilt leaf node:%d", newNode->GetPage());
-					LOG_INFO("spilt leaf node tree:%s", DrawBPlusTree().c_str());
+//					LOG_INFO("spilt leaf node tree:%s", DrawBPlusTree().c_str());
 //                    std::cout << "after split leaf node" << DrawBPlusTree() << std::endl;
 					LOG_WARN("1spilt leaf node:%d", newNode->GetPage());
 					InsertToParent(newNode->KeyAt(0), leaf_node, newNode, txn);

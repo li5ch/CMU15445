@@ -42,8 +42,11 @@ namespace bustub {
 		Context ctx;
 		(void) ctx;
 		auto root = GetRootPageId();
+		root_page_id_latch_.RLock();
 		auto read_page_guard = bpm_->FetchPage(root);
+		root_page_id_latch_.RUnlock();
 		read_page_guard->RLatch();
+
 		auto node = reinterpret_cast<const BPlusTreePage *>(read_page_guard->GetData());
 		while (!node->IsLeafPage()) {
 			auto n = reinterpret_cast<const InternalPage *>(read_page_guard->GetData());
@@ -99,50 +102,51 @@ namespace bustub {
 
 
 	INDEX_TEMPLATE_ARGUMENTS
-	auto BPLUSTREE_TYPE::Lookup(const KeyType &key, int operation_type, Transaction *txn) -> LeafPage * {
+	auto BPLUSTREE_TYPE::FindLeaf(const KeyType &key, Operation operation_type, Transaction *txn) -> LeafPage * {
 		// Declaration of context instance.
-		// TODO:需要判断读写操作来加读写锁
-		Context ctx;
-		(void) ctx;
-		auto root = GetRootPageId();
-		auto read_page_guard = bpm_->FetchPage(root);
-		LOG_INFO("begin lock page:%d", read_page_guard->GetPageId());
-		read_page_guard->WLatch();
-		LOG_INFO("lock page:%d", read_page_guard->GetPageId());
-		txn->AddIntoPageSet(read_page_guard);
-		auto node = reinterpret_cast<const BPlusTreePage *>(read_page_guard->GetData());
-		while (!node->IsLeafPage()) {
-			auto n = reinterpret_cast<const InternalPage *>(read_page_guard->GetData());
-			auto v = n->Lookup(key, comparator_);
-			switch (operation_type) {
-				case 0:
-					// insert
-					if (n->GetSize() < n->GetMaxSize()) {
-						ReleaseLatchFromQueue(txn);
-//						bpm_->UnpinPage(read_page_guard->GetPageId(), false);
-					}
-					break;
-				case 1:
-					if (n->GetSize() > std::ceil(n->GetMaxSize() / 2)) {
-						ReleaseLatchFromQueue(txn);
-//						bpm_->UnpinPage(read_page_guard->GetPageId(), false);
-					}
-					break;
-				default:
 
-					break;
+		auto page = bpm_->FetchPage(root_page_id_);
+		LOG_INFO("begin lock page:%d", page->GetPageId());
+		page->WLatch();
+		LOG_INFO("lock page:%d", page->GetPageId());
+		auto node = reinterpret_cast<const BPlusTreePage *>(page->GetData());
+		if (operation_type == Operation::INSERT && !node->IsLeafPage() && node->GetSize() < node->GetMaxSize()) {
+			ReleaseLatchFromQueue(txn);
+		}
+		if (operation_type == Operation::INSERT && node->IsLeafPage() && node->GetSize() < node->GetMaxSize() - 1) {
+			ReleaseLatchFromQueue(txn);
+		}
+		if (operation_type == Operation::DELETE && node->GetSize() > 2) {
+			ReleaseLatchFromQueue(txn);
+		}
+		while (!node->IsLeafPage()) {
+			auto n = reinterpret_cast<const InternalPage *>(page->GetData());
+			auto ch_page_id = n->Lookup(key, comparator_);
+			auto child_page = bpm_->FetchPage(static_cast<page_id_t>(ch_page_id));
+			auto child_node = reinterpret_cast<const BPlusTreePage *>(child_page->GetData());
+			child_page->WLatch();
+			txn->AddIntoPageSet(page);
+			if (operation_type == Operation::INSERT && !child_node->IsLeafPage() &&
+				child_node->GetSize() < child_node->GetMaxSize()) {
+				ReleaseLatchFromQueue(txn);
+				bpm_->UnpinPage(page->GetPageId(), false);
 			}
-			bpm_->UnpinPage(read_page_guard->GetPageId(), false);
-			read_page_guard = bpm_->FetchPage(static_cast<page_id_t>(v));
-			LOG_INFO("begin lock page:%d", read_page_guard->GetPageId());
-			read_page_guard->WLatch(); // TODO:阻塞
-			LOG_INFO("lock page:%d", read_page_guard->GetPageId());
-			txn->AddIntoPageSet(read_page_guard);
-			node = reinterpret_cast<const BPlusTreePage *>(read_page_guard->GetData());
+			if (operation_type == Operation::INSERT && child_node->IsLeafPage() &&
+				child_node->GetSize() < child_node->GetMaxSize() - 1) {
+				ReleaseLatchFromQueue(txn);
+				bpm_->UnpinPage(page->GetPageId(), false);
+			}
+			if (operation_type == Operation::DELETE && child_node->GetSize() > child_node->GetMinSize()) {
+				ReleaseLatchFromQueue(txn);
+				bpm_->UnpinPage(page->GetPageId(), false);
+			}
+
+			page = child_page;
+			node = child_node;
 		}
 		if (node->IsLeafPage()) {
-			auto n = reinterpret_cast<LeafPage *>(read_page_guard->GetData());
-			bpm_->UnpinPage(read_page_guard->GetPageId(), false);
+			auto n = reinterpret_cast<LeafPage *>(page->GetData());
+//			bpm_->UnpinPage(page->GetPageId(), false);
 			return n;
 		}
 		return nullptr;
@@ -178,7 +182,7 @@ namespace bustub {
 			return true;
 		} else {
 			// 递归向上分裂节点
-			auto leaf_node = Lookup(key, 0, txn);
+			auto leaf_node = FindLeaf(key, Operation::INSERT, txn);
 			if (leaf_node) {
 				auto leaf_page = bpm_->FetchPage(leaf_node->GetPage());
 				leaf_node = reinterpret_cast<LeafPage *>(leaf_page->GetData());
@@ -195,7 +199,6 @@ namespace bustub {
 					LOG_INFO("spilt leaf node:%d", newNode->GetPage());
 //					LOG_INFO("spilt leaf node tree:%s", DrawBPlusTree().c_str());
 //                    std::cout << "after split leaf node" << DrawBPlusTree() << std::endl;
-					LOG_WARN("1spilt leaf node:%d", newNode->GetPage());
 					InsertToParent(newNode->KeyAt(0), leaf_node, newNode, txn);
 					ReleaseLatchFromQueue(txn);
 					bpm_->UnpinPage(leaf_node->GetPage(), true);
@@ -246,7 +249,7 @@ namespace bustub {
 		// Declaration of context instance.x`
 		Context ctx;
 		(void) ctx;
-		auto cur_node = Lookup(key, 1, txn);
+		auto cur_node = FindLeaf(key, Operation::DELETE, txn);
 		auto cur_page = bpm_->FetchPage(cur_node->GetPage());
 		cur_node = reinterpret_cast<LeafPage *>(cur_page->GetData());
 		auto ok = cur_node->DeleteKey(key, comparator_);

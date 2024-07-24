@@ -57,6 +57,9 @@ namespace bustub {
 	};
 
 #define BPLUSTREE_TYPE BPlusTree<KeyType, ValueType, KeyComparator>
+	enum class Operation {
+		SEARCH, INSERT, DELETE
+	};
 #define IN_TREE_INTERNAL_PAGE_TYPE BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator>
 // Main class providing the API for the Interactive B+ Tree.
 	INDEX_TEMPLATE_ARGUMENTS
@@ -87,7 +90,7 @@ namespace bustub {
 		// Return the value associated with a given key
 		auto GetValue(const KeyType &key, std::vector<ValueType> *result, Transaction *txn = nullptr) -> bool;
 
-		auto Lookup(const KeyType &key, int operation_type, Transaction *txn) -> B_PLUS_TREE_LEAF_PAGE_TYPE *;
+		auto FindLeaf(const KeyType &key, Operation operation_type, Transaction *txn) -> B_PLUS_TREE_LEAF_PAGE_TYPE *;
 
 		// Return the page id of the root node
 		auto GetRootPageId() -> page_id_t;

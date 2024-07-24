@@ -58,6 +58,11 @@ namespace bustub {
  * Helper method to get min page size
  * Generally, min page size == max page size / 2
  */
-	auto BPlusTreePage::GetMinSize() const -> int { return max_size_ / 2; }
+	auto BPlusTreePage::GetMinSize() const -> int {
+		if (IsLeafPage()) {
+			return max_size_ / 2;
+		}
+		return (max_size_ + 1) / 2;
+	}
 
 }  // namespace bustub

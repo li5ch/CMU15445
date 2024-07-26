@@ -56,19 +56,32 @@ namespace bustub {
         // randomized the insertion order
         auto rng = std::default_random_engine{};
         std::shuffle(keys.begin(), keys.end(), rng);
+        auto i = 0;
         for (auto key: keys) {
             int64_t value = key & 0xFFFFFFFF;
             rid.Set(static_cast<int32_t>(key >> 32), value);
             index_key.SetFromInteger(key);
-            std::cout << key << std::endl;
+            std::cout << index_key << std::endl;
             tree.Insert(index_key, rid, transaction);
+            if (i == 0) {
+                std::cout << "after insert" << tree.DrawBPlusTree() << std::endl;
+                i = 1;
+                continue;
+            }
+            if (i == 1) {
+                std::cout << "after insert" << tree.DrawBPlusTree() << std::endl;
+                i = 2;
+            }
+
 //			std::cout << "after insert" << tree.DrawBPlusTree() << std::endl;
         }
+        std::cout << "after insert" << tree.DrawBPlusTree() << std::endl;
         std::vector<RID> rids;
         for (auto key: keys) {
             rids.clear();
             index_key.SetFromInteger(key);
             tree.GetValue(index_key, &rids);
+            std::cout << index_key << std::endl;
             ASSERT_EQ(rids.size(), 1);
 
             int64_t value = key & 0xFFFFFFFF;

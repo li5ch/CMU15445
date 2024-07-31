@@ -3,49 +3,52 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON) # For clang-tidy.
 set(BUILD_SHARED_LIBS OFF) # We expect external libraries to be linked statically.
 set(CMAKE_CXX_STANDARD 17) # Compile as C++17.
 set(CMAKE_CXX_STANDARD_REQUIRED ON) # Require C++17 support.
-
+if (ENABLE_ASAN)
+    message(STATUS "build with ASAN")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address")
+endif ()
 project(BusTub
         VERSION 2023.1
         DESCRIPTION "The BusTub Relational Database Management System (Educational) @ https://github.com/cmu-db/bustub"
         LANGUAGES C CXX
 )
 
-if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
-        message(STATUS "Setting build type to `Debug` as none was specified.")
-        set(CMAKE_BUILD_TYPE "Debug")
-endif()
+if (NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+    message(STATUS "Setting build type to `Debug` as none was specified.")
+    set(CMAKE_BUILD_TYPE "Debug")
+endif ()
 
-if(EMSCRIPTEN)
-        add_compile_options(-fexceptions)
-        add_link_options(-fexceptions)
-endif()
+if (EMSCRIPTEN)
+    add_compile_options(-fexceptions)
+    add_link_options(-fexceptions)
+endif ()
 
 # People keep running CMake in the wrong folder, completely nuking their project or creating weird bugs.
 # This checks if you're running CMake from a folder that already has CMakeLists.txt.
 # Importantly, this catches the common case of running it from the root directory.
 file(TO_CMAKE_PATH "${PROJECT_BINARY_DIR}/CMakeLists.txt" PATH_TO_CMAKELISTS_TXT)
 
-if(EXISTS "${PATH_TO_CMAKELISTS_TXT}")
-        message(FATAL_ERROR "Run CMake from a build subdirectory! \"mkdir build ; cd build ; cmake ..\" \
+if (EXISTS "${PATH_TO_CMAKELISTS_TXT}")
+    message(FATAL_ERROR "Run CMake from a build subdirectory! \"mkdir build ; cd build ; cmake ..\" \
     Some junk files were created in this folder (CMakeCache.txt, CMakeFiles); you should delete those.")
-endif()
+endif ()
 
 # Expected directory structure.
 set(BUSTUB_BUILD_SUPPORT_DIR "${CMAKE_SOURCE_DIR}/build_support")
 set(BUSTUB_CLANG_SEARCH_PATH "/usr/local/bin" "/usr/bin" "/usr/local/opt/llvm/bin" "/usr/local/opt/llvm@14/bin"
         "/opt/homebrew/opt/llvm@14/bin/")
 
-if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-        if(CMAKE_CXX_COMPILER_VERSION MATCHES "^14.")
-                message(STATUS "You're using ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
-        else()
-                message(WARNING "!! We recommend that you use clang-14 for developing BusTub. You're using ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}, a different version.")
-        endif()
-elseif(CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
+if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    if (CMAKE_CXX_COMPILER_VERSION MATCHES "^14.")
         message(STATUS "You're using ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
-else()
-        message(WARNING "!! We recommend that you use clang-14 for developing BusTub. You're using ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}, which is not clang.")
-endif()
+    else ()
+        message(WARNING "!! We recommend that you use clang-14 for developing BusTub. You're using ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}, a different version.")
+    endif ()
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
+    message(STATUS "You're using ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
+else ()
+    message(WARNING "!! We recommend that you use clang-14 for developing BusTub. You're using ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}, which is not clang.")
+endif ()
 
 # #####################################################################################################################
 # DEPENDENCIES
@@ -61,54 +64,54 @@ find_program(CLANG_FORMAT_BIN
         NAMES clang-format clang-format-14
         HINTS ${BUSTUB_CLANG_SEARCH_PATH})
 
-if("${CLANG_FORMAT_BIN}" STREQUAL "CLANG_FORMAT_BIN-NOTFOUND")
-        message(WARNING "BusTub/main couldn't find clang-format.")
-else()
-        message(STATUS "BusTub/main found clang-format at ${CLANG_FORMAT_BIN}")
-endif()
+if ("${CLANG_FORMAT_BIN}" STREQUAL "CLANG_FORMAT_BIN-NOTFOUND")
+    message(WARNING "BusTub/main couldn't find clang-format.")
+else ()
+    message(STATUS "BusTub/main found clang-format at ${CLANG_FORMAT_BIN}")
+endif ()
 
 # attempt to find the binary if user did not specify
 find_program(CLANG_TIDY_BIN
         NAMES clang-tidy clang-tidy-14
         HINTS ${BUSTUB_CLANG_SEARCH_PATH})
 
-if("${CLANG_TIDY_BIN}" STREQUAL "CLANG_TIDY_BIN-NOTFOUND")
-        message(WARNING "BusTub/main couldn't find clang-tidy.")
-else()
-        # Output compile_commands.json
-        set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
-        message(STATUS "BusTub/main found clang-tidy at ${CLANG_TIDY_BIN}")
-endif()
+if ("${CLANG_TIDY_BIN}" STREQUAL "CLANG_TIDY_BIN-NOTFOUND")
+    message(WARNING "BusTub/main couldn't find clang-tidy.")
+else ()
+    # Output compile_commands.json
+    set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
+    message(STATUS "BusTub/main found clang-tidy at ${CLANG_TIDY_BIN}")
+endif ()
 
 find_program(CLANG_APPLY_REPLACEMENTS_BIN
         NAMES clang-apply-replacements clang-apply-replacements-14
         HINTS ${BUSTUB_CLANG_SEARCH_PATH})
 
-if("${CLANG_APPLY_REPLACEMENTS_BIN}" STREQUAL "CLANG_APPLY_REPLACEMENTS_BIN-NOTFOUND")
-        message(WARNING "BusTub/main couldn't find clang-apply-replacements.")
-else()
-        # Output compile_commands.json
-        set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
-        message(STATUS "BusTub/main found clang-apply-replacements at ${CLANG_APPLY_REPLACEMENTS_BIN}")
-endif()
+if ("${CLANG_APPLY_REPLACEMENTS_BIN}" STREQUAL "CLANG_APPLY_REPLACEMENTS_BIN-NOTFOUND")
+    message(WARNING "BusTub/main couldn't find clang-apply-replacements.")
+else ()
+    # Output compile_commands.json
+    set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
+    message(STATUS "BusTub/main found clang-apply-replacements at ${CLANG_APPLY_REPLACEMENTS_BIN}")
+endif ()
 
 # cpplint
 find_program(CPPLINT_BIN
         NAMES cpplint cpplint.py
         HINTS "${BUSTUB_BUILD_SUPPORT_DIR}")
 
-if("${CPPLINT_BIN}" STREQUAL "CPPLINT_BIN-NOTFOUND")
-        message(WARNING "BusTub/main couldn't find cpplint.")
-else()
-        message(STATUS "BusTub/main found cpplint at ${CPPLINT_BIN}")
-endif()
+if ("${CPPLINT_BIN}" STREQUAL "CPPLINT_BIN-NOTFOUND")
+    message(WARNING "BusTub/main couldn't find cpplint.")
+else ()
+    message(STATUS "BusTub/main found cpplint at ${CPPLINT_BIN}")
+endif ()
 
 # #####################################################################################################################
 # COMPILER SETUP
 # #####################################################################################################################
-if(NOT DEFINED BUSTUB_SANITIZER)
-        set(BUSTUB_SANITIZER address)
-endif()
+if (NOT DEFINED BUSTUB_SANITIZER)
+    set(BUSTUB_SANITIZER address)
+endif ()
 
 message("Build mode: ${CMAKE_BUILD_TYPE}")
 message("${BUSTUB_SANITIZER} sanitizer will be enabled in debug mode.")
@@ -144,7 +147,7 @@ include_directories(${BUSTUB_SRC_INCLUDE_DIR} ${BUSTUB_TEST_INCLUDE_DIR} ${BUSTU
 include_directories(BEFORE src) # This is needed for gtest.
 
 function(disable_target_warnings NAME)
-        target_compile_options(${NAME} PRIVATE "-w")
+    target_compile_options(${NAME} PRIVATE "-w")
 endfunction()
 
 # #####################################################################################################################

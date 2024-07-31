@@ -96,7 +96,6 @@ namespace bustub {
 		new_node->CopyLeafData((node->GetMaxSize()) / 2 + 1, node);
 		new_node->SetSize(node->GetSize() - (node->GetMaxSize()) / 2 - 1);
 		node->SetSize((node->GetMaxSize()) / 2 + 1);
-
 		return new_node;
 	}
 
@@ -104,7 +103,7 @@ namespace bustub {
 	INDEX_TEMPLATE_ARGUMENTS
 	auto BPLUSTREE_TYPE::FindLeaf(const KeyType &key, Operation operation_type, Transaction *txn) -> Page * {
 		// Declaration of context instance.
-
+		assert(root_page_id_ != INVALID_PAGE_ID);
 		auto page = bpm_->FetchPage(root_page_id_);
 //        LOG_INFO("begin lock page:%d", page->GetPageId());
 		page->WLatch();
@@ -120,8 +119,10 @@ namespace bustub {
 			ReleaseLatchFromQueue(txn);
 		}
 		while (!node->IsLeafPage()) {
-			auto n = reinterpret_cast<const InternalPage *>(page->GetData());
+			auto n = reinterpret_cast<const InternalPage *>(node);
+			
 			auto ch_page_id = n->Lookup(key, comparator_);
+			assert(ch_page_id > 0);
 			auto child_page = bpm_->FetchPage(static_cast<page_id_t>(ch_page_id));
 			auto child_node = reinterpret_cast<const BPlusTreePage *>(child_page->GetData());
 			child_page->WLatch();
@@ -170,8 +171,8 @@ namespace bustub {
 			auto root_page_leaf = reinterpret_cast<LeafPage *>(page->GetData());
 			root_page_leaf->Init(root_page_id_, INVALID_PAGE_ID, leaf_max_size_);
 			root_page_leaf->Insert(key, value, comparator_);
-			ReleaseLatchFromQueue(txn);
 			bpm_->UnpinPage(page->GetPageId(), true);
+			ReleaseLatchFromQueue(txn);
 			return true;
 		} else {
 			// 递归向上分裂节点
@@ -185,16 +186,12 @@ namespace bustub {
 				return false;
 			}
 			// insert to parent 递归
-//                std::cout << "insert leaf node1:" << leaf_node->GetPage() << DrawBPlusTree() << std::endl;
 			if (leaf_node->GetSize() >= leaf_node->GetMaxSize()) {
 				// split leaf node
 				auto newNode = SplitLeafNode(leaf_node);
 				// insert to parent 递归
 //				LOG_INFO("spilt leaf node:%d", newNode->GetPage());
-//					LOG_INFO("spilt leaf node tree:%s", DrawBPlusTree().c_str());
-//                    std::cout << "after split leaf node" << DrawBPlusTree() << std::endl;
 				InsertToParent(newNode->KeyAt(0), leaf_node, newNode, txn);
-//				ReleaseLatchFromQueue(txn);
 				leaf_page->WUnlatch();
 				bpm_->UnpinPage(leaf_node->GetPage(), true);
 				bpm_->UnpinPage(newNode->GetPage(), true);
@@ -410,7 +407,6 @@ namespace bustub {
 		auto pa_node = reinterpret_cast<InternalPage *>(parent_page->GetData());
 		if (pa_node->GetSize() < pa_node->GetMaxSize()) {
 			pa_node->Insert(key, new_node->GetPage(), comparator_);
-
 			ReleaseLatchFromQueue(txn);
 			bpm_->UnpinPage(pa_node->GetPage(), true);
 			return;
@@ -429,7 +425,6 @@ namespace bustub {
 //        LOG_INFO("tree2:%s", DrawBPlusTree().c_str());
 		InsertToParent(k, pa_node, node1, txn);
 //        LOG_INFO("tree3:%s", DrawBPlusTree().c_str());
-//		ReleaseLatchFromQueue(txn);
 		bpm_->UnpinPage(pa_node->GetPage(), true);
 		bpm_->UnpinPage(node1->GetPage(), true);
 	}
@@ -445,18 +440,24 @@ namespace bustub {
  */
 	INDEX_TEMPLATE_ARGUMENTS
 	auto BPLUSTREE_TYPE::Begin() -> INDEXITERATOR_TYPE {
+		root_page_id_latch_.RLock();
 		auto root = GetRootPageId();
 		auto read_page_guard = bpm_->FetchPage(root);
+		root_page_id_latch_.RUnlock();
+		read_page_guard->RLatch();
 		auto node = reinterpret_cast<const BPlusTreePage *>(read_page_guard->GetData());
 		while (!node->IsLeafPage()) {
 			auto n = reinterpret_cast<const InternalPage *>(read_page_guard->GetData());
+			read_page_guard->RUnlatch();
 			read_page_guard = bpm_->FetchPage(n->ValueAt(0));
+			read_page_guard->RLatch();
 			node = reinterpret_cast<const BPlusTreePage *>(read_page_guard->GetData());
 		}
 		if (node->IsLeafPage()) {
+			read_page_guard->RUnlatch();
 			return INDEXITERATOR_TYPE(bpm_, read_page_guard);
 		}
-
+		read_page_guard->RUnlatch();
 		return INDEXITERATOR_TYPE();
 	}
 
@@ -467,20 +468,27 @@ namespace bustub {
  */
 	INDEX_TEMPLATE_ARGUMENTS
 	auto BPLUSTREE_TYPE::Begin(const KeyType &key) -> INDEXITERATOR_TYPE {
+		root_page_id_latch_.RLock();
 		auto root = GetRootPageId();
 		auto read_page_guard = bpm_->FetchPage(root);
+		root_page_id_latch_.RUnlock();
+		read_page_guard->RLatch();
 		auto node = reinterpret_cast<const BPlusTreePage *>(read_page_guard->GetData());
 		while (!node->IsLeafPage()) {
 			auto n = reinterpret_cast<const InternalPage *>(read_page_guard->GetData());
 			auto v = n->Lookup(key, comparator_);
+			read_page_guard->RUnlatch();
 			read_page_guard = bpm_->FetchPage(static_cast<page_id_t>(v));
+			read_page_guard->RLatch();
 			node = reinterpret_cast<const BPlusTreePage *>(read_page_guard->GetData());
 		}
 		if (node->IsLeafPage()) {
 			auto n = reinterpret_cast<LeafPage *>(read_page_guard->GetData());
 			auto i = n->KeyIndex(key, comparator_);
+			read_page_guard->RUnlatch();
 			return INDEXITERATOR_TYPE(bpm_, read_page_guard, i);
 		}
+		read_page_guard->RUnlatch();
 		return INDEXITERATOR_TYPE();
 	}
 
@@ -491,23 +499,31 @@ namespace bustub {
  */
 	INDEX_TEMPLATE_ARGUMENTS
 	auto BPLUSTREE_TYPE::End() -> INDEXITERATOR_TYPE {
+		root_page_id_latch_.RLock();
 		auto root = GetRootPageId();
 		auto read_page_guard = bpm_->FetchPage(root);
+		root_page_id_latch_.RUnlock();
+		read_page_guard->RLatch();
 		auto node = reinterpret_cast<const BPlusTreePage *>(read_page_guard->GetData());
 		while (!node->IsLeafPage()) {
 			auto n = reinterpret_cast<const InternalPage *>(read_page_guard->GetData());
+			read_page_guard->RUnlatch();
 			read_page_guard = bpm_->FetchPage(n->ValueAt(n->GetSize() - 1));
+			read_page_guard->RLatch();
 			node = reinterpret_cast<const BPlusTreePage *>(read_page_guard->GetData());
 		}
 		if (node->IsLeafPage()) {
 			auto n = reinterpret_cast<const LeafPage *>(read_page_guard->GetData());
 			while (n->GetNextPageId() != INVALID_PAGE_ID) {
+				read_page_guard->RUnlatch();
 				read_page_guard = bpm_->FetchPage(n->GetNextPageId());
+				read_page_guard->RLatch();
 				n = reinterpret_cast<const LeafPage *>(read_page_guard->GetData());
 			}
-
+			read_page_guard->RUnlatch();
 			return INDEXITERATOR_TYPE(bpm_, read_page_guard, n->GetSize());
 		}
+		read_page_guard->RUnlatch();
 		return INDEXITERATOR_TYPE();
 	}
 

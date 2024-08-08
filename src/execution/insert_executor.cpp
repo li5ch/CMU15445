@@ -16,12 +16,14 @@
 
 namespace bustub {
 
-InsertExecutor::InsertExecutor(ExecutorContext *exec_ctx, const InsertPlanNode *plan,
-                               std::unique_ptr<AbstractExecutor> &&child_executor)
-    : AbstractExecutor(exec_ctx) {}
+    InsertExecutor::InsertExecutor(ExecutorContext *exec_ctx, const InsertPlanNode *plan,
+                                   std::unique_ptr<AbstractExecutor> &&child_executor)
+        : AbstractExecutor(exec_ctx), plan_(plan) {}
 
-void InsertExecutor::Init() { throw NotImplementedException("InsertExecutor is not implemented"); }
+    void InsertExecutor::Init() {
 
-auto InsertExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) -> bool { return false; }
+    }
+
+    auto InsertExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) -> bool { return false; }
 
 }  // namespace bustub

@@ -21,7 +21,7 @@ namespace bustub {
         : AbstractExecutor(exec_ctx), plan_(plan), child_executor_(std::move(child_executor)) {}
 
     void InsertExecutor::Init() {
-
+        child_executor_->Init();
     }
 
     auto InsertExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) -> bool {

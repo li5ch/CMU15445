@@ -20,38 +20,38 @@ namespace bustub {
 
 #define INDEXITERATOR_TYPE IndexIterator<KeyType, ValueType, KeyComparator>
 
-	INDEX_TEMPLATE_ARGUMENTS
-	class IndexIterator {
-	public:
-		// you may define your own constructor based on your member variables
-		IndexIterator();
+    INDEX_TEMPLATE_ARGUMENTS
+    class IndexIterator {
+    public:
+        // you may define your own constructor based on your member variables
+        IndexIterator();
 
-		explicit IndexIterator(BufferPoolManager *bufferPoolManager, Page *page, int node_index = 0) {
-			bpm_ = bufferPoolManager;
-			page_ = page;
-			node_index_ = node_index;
+        explicit IndexIterator(BufferPoolManager *bufferPoolManager, Page *page, int node_index = 0) {
+            bpm_ = bufferPoolManager;
+            page_ = page;
+            node_index_ = node_index;
 
-		}
+        }
 
-		~IndexIterator();  // NOLINT
+        ~IndexIterator();  // NOLINT
 
-		auto IsEnd() -> bool;
+        auto IsEnd() -> bool;
 
-		auto operator*() -> const MappingType &;
+        auto operator*() -> const MappingType &;
 
-		auto operator++() -> IndexIterator &;
+        auto operator++() -> IndexIterator &;
 
-		auto operator==(const IndexIterator &itr) const -> bool;
+        auto operator==(const IndexIterator &itr) const -> bool;
 
-		auto operator!=(const IndexIterator &itr) const -> bool;
+        auto operator!=(const IndexIterator &itr) const -> bool;
 
-	private:
-		// add your own private member variables here
-		BufferPoolManager *bpm_;
-		Page *page_;
-		int node_index_;
+    private:
+        // add your own private member variables here
+        BufferPoolManager *bpm_;
+        Page *page_;
+        int node_index_;
 
 
-	};
+    };
 
 }  // namespace bustub

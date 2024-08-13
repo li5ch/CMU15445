@@ -45,7 +45,7 @@ namespace bustub {
                     i->index_->DeleteEntry(*tuple, *rid, exec_ctx_->GetTransaction());
                     auto k = tuple->KeyFromTuple(table_info->schema_, i->key_schema_, i->index_->GetKeyAttrs());
                     auto result = i->index_->InsertEntry(k, *rid, exec_ctx_->GetTransaction());
-                    BUSTUB_ENSURE(result != true, "InsertEntry cannot fail");
+                    BUSTUB_ENSURE(result, "InsertEntry cannot fail");
                 }
             } else {
                 return false;

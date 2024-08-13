@@ -24,6 +24,7 @@ namespace bustub {
 
     INDEX_TEMPLATE_ARGUMENTS
     auto INDEXITERATOR_TYPE::IsEnd() -> bool {
+        if (page_ == nullptr) return true;
         auto node = reinterpret_cast<B_PLUS_TREE_LEAF_PAGE_TYPE *>(page_->GetData());
         if (node_index_ == node->GetSize() - 1 && node->GetNextPageId() == INVALID_PAGE_ID) {
             return true;

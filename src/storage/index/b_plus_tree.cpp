@@ -442,6 +442,10 @@ namespace bustub {
  */
     INDEX_TEMPLATE_ARGUMENTS
     auto BPLUSTREE_TYPE::Begin() -> INDEXITERATOR_TYPE {
+        if (root_page_id_ == INVALID_PAGE_ID) {
+            return INDEXITERATOR_TYPE(nullptr, nullptr);
+        }
+
         root_page_id_latch_.RLock();
         auto root = GetRootPageId();
         auto read_page_guard = bpm_->FetchPage(root);

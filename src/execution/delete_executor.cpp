@@ -25,17 +25,28 @@ namespace bustub {
     }
 
     auto DeleteExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) -> bool {
-
+        if (is_end_) return false;
+        Tuple delete_tuple;
+        RID empty_rid;
+        int delete_count = 0;
         auto table_info = GetExecutorContext()->GetCatalog()->GetTable(plan_->GetTableOid());
         while (1) {
-            if (child_executor_->Next(tuple, rid)) {
-                table_info->table_->UpdateTupleMeta(TupleMeta{INVALID_TXN_ID, INVALID_TXN_ID, true}, *rid);
+            if (child_executor_->Next(&delete_tuple, &empty_rid)) {
+                table_info->table_->UpdateTupleMeta(TupleMeta{INVALID_TXN_ID, INVALID_TXN_ID, true}, empty_rid);
                 auto index = GetExecutorContext()->GetCatalog()->GetTableIndexes(table_info->name_);
                 for (auto &i: index) {
-                    i->index_->DeleteEntry(*tuple, *rid, exec_ctx_->GetTransaction());
+                    auto k = delete_tuple.KeyFromTuple(table_info->schema_, i->key_schema_,
+                                                       i->index_->GetKeyAttrs());
+                    i->index_->DeleteEntry(k, empty_rid, exec_ctx_->GetTransaction());
                 }
+                delete_count++;
             } else {
-                return false;
+                std::vector<Value> values{};
+                values.reserve(GetOutputSchema().GetColumnCount());
+                values.emplace_back(TypeId::INTEGER, delete_count);
+                *tuple = Tuple{values, &GetOutputSchema()};
+                is_end_ = true;
+                return true;
             }
         }
     }

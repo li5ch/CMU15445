@@ -45,13 +45,6 @@ namespace bustub {
                                                                    i->index_->GetKeyAttrs()), *r,
                                       exec_ctx->GetTransaction());
                               });
-
-                for (auto &i: index) {
-                    auto k = to_insert_tuple.KeyFromTuple(table_info->schema_, i->key_schema_,
-                                                          i->index_->GetKeyAttrs());
-                    auto result = i->index_->InsertEntry(k, *r, exec_ctx_->GetTransaction());
-                    BUSTUB_ENSURE(result, "InsertEntry cannot fail");
-                }
                 if (r != std::nullopt) {
                     insert_count++;
                 }

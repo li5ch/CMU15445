@@ -24,18 +24,13 @@ namespace bustub {
 
 	auto IndexScanExecutor::Next(Tuple *tuple, RID *rid) -> bool {
 
-		while (!iter_.IsEnd()) {
-			const auto &pair = *iter_;
+		if (!iter_.IsEnd()) {
+			const auto pair = *iter_;
 			auto res = tableInfo->table_->GetTuple(pair.second);
 			*rid = pair.second;
-			if (res.first.is_deleted_) {
-				++iter_;
-			} else {
-				*tuple = res.second;
-				++iter_;
-				return true;
-			}
-
+			*tuple = res.second;
+			++iter_;
+			return true;
 		}
 		return false;
 	}

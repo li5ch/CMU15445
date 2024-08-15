@@ -40,20 +40,20 @@ namespace bustub {
 				}
 				auto to_update_tuple = Tuple{values, &child_executor_->GetOutputSchema()};
 				table_info->table_->UpdateTupleMeta(TupleMeta{INVALID_TXN_ID, INVALID_TXN_ID, true}, empty_rid);
-				table_info->table_->InsertTuple(TupleMeta{INVALID_TXN_ID,
-														  INVALID_TXN_ID, false}, to_update_tuple,
-												exec_ctx_->GetLockManager(), exec_ctx_->GetTransaction(),
-												plan_->GetTableOid());
+				auto new_rid = table_info->table_->InsertTuple(TupleMeta{INVALID_TXN_ID,
+																		 INVALID_TXN_ID, false}, to_update_tuple,
+															   exec_ctx_->GetLockManager(), exec_ctx_->GetTransaction(),
+															   plan_->GetTableOid());
 				update_count++;
 				auto index = GetExecutorContext()->GetCatalog()->GetTableIndexes(table_info->name_);
-				for (auto &i: index) {
-
+				for (auto i: index) {
 					auto k = is_update_tuple.KeyFromTuple(table_info->schema_, i->key_schema_,
 														  i->index_->GetKeyAttrs());
 					i->index_->DeleteEntry(k, empty_rid, exec_ctx_->GetTransaction());
 					auto result = i->index_->InsertEntry(
 						to_update_tuple.KeyFromTuple(table_info->schema_, i->key_schema_,
-													 i->index_->GetKeyAttrs()), empty_rid, exec_ctx_->GetTransaction());
+													 i->index_->GetKeyAttrs()), new_rid.value(),
+						exec_ctx_->GetTransaction());
 					BUSTUB_ENSURE(result, "InsertEntry cannot fail");
 				}
 			} else {

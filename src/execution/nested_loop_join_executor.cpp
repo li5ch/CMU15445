@@ -38,10 +38,10 @@ namespace bustub {
         RID left_rid, right_rid;
         while (left_executor_->Next(&left, &left_rid)) {
             while (right_executor_->Next(&right, &right_rid)) {
-                
+
                 auto value = plan_->Predicate()->EvaluateJoin(&left, left_executor_->GetOutputSchema(), &right,
                                                               right_executor_->GetOutputSchema());
-
+                if()
             }
         }
 

@@ -30,44 +30,44 @@ namespace bustub {
 
 	void NestedLoopJoinExecutor::Init() {
 		left_executor_->Init();
-		right_executor_->Init();
-
 	}
 
 	auto NestedLoopJoinExecutor::Next(Tuple *tuple, RID *rid) -> bool {
-		Tuple left;
 		RID left_rid;
 
-		while (left_executor_->Next(&left, &left_rid)) {
+		while (right_idx >= 0 || left_executor_->Next(&left_tuple_, &left_rid)) {
 			right_executor_->Init();
 			Tuple t;
 			RID rrid;
+			right_tuple_.clear();
 			while (right_executor_->Next(&t, &rrid)) {
 				right_tuple_.push_back(t);
 			}
-			for (uint32_t idx = 0; idx < right_tuple_.size(); idx++) {
+			for (int rdx = right_idx == -1 ? 0 : right_idx; rdx < int(right_tuple_.size()); rdx++) {
 
-				auto value = plan_->Predicate()->EvaluateJoin(&left, left_executor_->GetOutputSchema(),
-															  &right_tuple_[idx],
+				auto value = plan_->Predicate()->EvaluateJoin(&left_tuple_, left_executor_->GetOutputSchema(),
+															  &right_tuple_[rdx],
 															  right_executor_->GetOutputSchema());
 				if (!value.IsNull() && value.GetAs<bool>()) {
 
 					std::vector<Value> values;
 					for (uint32_t i = 0; i < left_executor_->GetOutputSchema().GetColumnCount(); ++i) {
-						values.push_back(left.GetValue(&left_executor_->GetOutputSchema(), i));
+						values.push_back(left_tuple_.GetValue(&left_executor_->GetOutputSchema(), i));
 					}
 					for (uint32_t i = 0; i < right_executor_->GetOutputSchema().GetColumnCount(); ++i) {
-						values.push_back(right_tuple_[idx].GetValue(&right_executor_->GetOutputSchema(), i));
+						values.push_back(right_tuple_[rdx].GetValue(&right_executor_->GetOutputSchema(), i));
 					}
 
 					*tuple = Tuple{values, &GetOutputSchema()};
+					right_idx = rdx + 1;
 					return true;
 				}
 			}
-			if (plan_->GetJoinType() == JoinType::LEFT) {
+
+			if (right_idx == -1 && plan_->GetJoinType() == JoinType::LEFT) {
 				std::vector<Value> values;
 				for (uint32_t i = 0; i < left_executor_->GetOutputSchema().GetColumnCount(); ++i) {
-					values.push_back(left.GetValue(&left_executor_->GetOutputSchema(), i));
+					values.push_back(left_tuple_.GetValue(&left_executor_->GetOutputSchema(), i));
 				}
 				for (uint32_t i = 0; i < right_executor_->GetOutputSchema().GetColumnCount(); ++i) {
 					values.push_back(
@@ -77,6 +77,7 @@ namespace bustub {
 				*tuple = Tuple{values, &GetOutputSchema()};
 				return true;
 			}
+			right_idx = -1;
 		}
 
 		return false;

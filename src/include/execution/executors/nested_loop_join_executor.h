@@ -57,6 +57,8 @@ namespace bustub {
 		const NestedLoopJoinPlanNode *plan_;
 		std::unique_ptr<AbstractExecutor> left_executor_, right_executor_;
 		std::vector<Tuple> right_tuple_;
+		int right_idx{0};
+		Tuple left_tuple_;
 	};
 
 }  // namespace bustub

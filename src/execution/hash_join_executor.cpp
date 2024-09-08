@@ -13,6 +13,7 @@
 #include "execution/executors/hash_join_executor.h"
 #include "execution/expressions/column_value_expression.h"
 #include "type/value_factory.h"
+#include "execution/expressions/comparison_expression.h"
 
 namespace bustub {
 
@@ -40,7 +41,7 @@ namespace bustub {
 				if (!k.IsNull())
 					cur_hash = HashUtil::CombineHashes(cur_hash, HashUtil::HashValue(&k));
 			}
-			ht_[cur_hash] = t;
+			ht_[cur_hash].push_back(t);
 			LOG_INFO("right hash table tt%zu", cur_hash);
 		}
 	}
@@ -58,24 +59,40 @@ namespace bustub {
 			}
 			if (ht_.count(cur_hash)) {
 				LOG_INFO("left hash table tt%zu", cur_hash);
-				for (const auto &expr: plan_->LeftJoinKeyExpressions()) {
-					auto k = expr->EvaluateJoin(&t, left_child->GetOutputSchema(), &ht_[cur_hash],
-												right_child->GetOutputSchema());
-					if (k.IsNull() || !k.GetAs<bool>())
-						continue;
-				}
-				std::vector<Value> values;
-				values.reserve(
-					left_child->GetOutputSchema().GetColumnCount() + right_child->GetOutputSchema().GetColumnCount());
-				for (uint32_t i = 0; i < left_child->GetOutputSchema().GetColumnCount(); ++i) {
-					values.push_back(t.GetValue(&left_child->GetOutputSchema(), i));
-				}
-				for (uint32_t i = 0; i < right_child->GetOutputSchema().GetColumnCount(); ++i) {
-					values.push_back(ht_[cur_hash].GetValue(&right_child->GetOutputSchema(), i));
+				for (auto &right_tuple: ht_[cur_hash]) {
+
 				}
 
-				*tuple = Tuple{values, &GetOutputSchema()};
-				return true;
+				int idx = 0;
+				bool founded = true;
+				for (const auto &expr: plan_->LeftJoinKeyExpressions()) {
+					ex
+
+					auto cexpr = ComparisonExpression(expr, plan_->RightJoinKeyExpressions()[idx++],
+													  ComparisonType::Equal);
+					auto k = cexpr.EvaluateJoin(&t, left_child->GetOutputSchema(), &ht_[cur_hash],
+												right_child->GetOutputSchema());
+					if (k.IsNull() || !k.GetAs<bool>()) {
+						founded = false;
+						break;
+					}
+				}
+				if (founded) {
+					std::vector<Value> values;
+					values.reserve(
+						left_child->GetOutputSchema().GetColumnCount() +
+						right_child->GetOutputSchema().GetColumnCount());
+					for (uint32_t i = 0; i < left_child->GetOutputSchema().GetColumnCount(); ++i) {
+						values.push_back(t.GetValue(&left_child->GetOutputSchema(), i));
+					}
+					for (uint32_t i = 0; i < right_child->GetOutputSchema().GetColumnCount(); ++i) {
+						values.push_back(ht_[cur_hash].GetValue(&right_child->GetOutputSchema(), i));
+					}
+
+					*tuple = Tuple{values, &GetOutputSchema()};
+					return true;
+				}
+
 			}
 			if (JoinType::LEFT == plan_->GetJoinType()) {
 				std::vector<Value> values;

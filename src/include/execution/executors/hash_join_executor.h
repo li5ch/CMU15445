@@ -203,7 +203,7 @@ namespace bustub {
 		const HashJoinPlanNode *plan_;
 		std::unique_ptr<AbstractExecutor> left_child;
 		std::unique_ptr<AbstractExecutor> right_child;
-		std::unordered_map<hash_t, Tuple> ht_{};
+		std::unordered_map<hash_t, std::vector<Tuple>> ht_{};
 	};
 
 }  // namespace bustub

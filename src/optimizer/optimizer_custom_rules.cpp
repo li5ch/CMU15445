@@ -7,14 +7,15 @@
 
 namespace bustub {
 
-auto Optimizer::OptimizeCustom(const AbstractPlanNodeRef &plan) -> AbstractPlanNodeRef {
-  auto p = plan;
-  p = OptimizeMergeProjection(p);
-  p = OptimizeMergeFilterNLJ(p);
-  p = OptimizeNLJAsHashJoin(p);
-  p = OptimizeOrderByAsIndexScan(p);
-  p = OptimizeSortLimitAsTopN(p);
-  return p;
-}
+    auto Optimizer::OptimizeCustom(const AbstractPlanNodeRef &plan) -> AbstractPlanNodeRef {
+        auto p = plan;
+        p = OptimizeMergeProjection(p);
+        p = OptimizeMergeFilterNLJ(p);
+        p = OptimizeNLJAsIndexJoin(p);
+        p = OptimizeNLJAsHashJoin(p);
+        p = OptimizeOrderByAsIndexScan(p);
+        p = OptimizeSortLimitAsTopN(p);
+        return p;
+    }
 
 }  // namespace bustub

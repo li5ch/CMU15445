@@ -12,6 +12,7 @@
 
 #include "execution/executors/nested_index_join_executor.h"
 #include "execution/expressions/column_value_expression.h"
+#include "type/value_factory.h"
 
 namespace bustub {
 
@@ -33,12 +34,41 @@ namespace bustub {
     auto NestIndexJoinExecutor::Next(Tuple *tuple, RID *rid) -> bool {
         Tuple t;
         RID r;
-        auto index_info = exec_ctx_->GetCatalog()->GetTable(exec_ctx_->GetCatalog()->GetIndex(
-            plan_->GetIndexOid())->table_name_);
-        auto expr = dynamic_cast<const ColumnValueExpression*>( plan_->KeyPredicate());
+        auto index_info = exec_ctx_->GetCatalog()->GetTable(plan_->GetInnerTableOid());
+        auto expr = dynamic_cast<const ColumnValueExpression *>( plan_->KeyPredicate().get());
         while (child_exe_->Next(&t, &r)) {
-            auto key = t.GetValue(child_exe_->GetOutputSchema(),.)
-            tree_->ScanKey()
+            auto key = t.GetValue(&child_exe_->GetOutputSchema(), expr->GetColIdx());
+            std::vector<RID> result;
+            Tuple key_tuple = Tuple({key}, &exec_ctx_->GetCatalog()->GetIndex(plan_->GetIndexOid())->key_schema_);
+            tree_->ScanKey(key_tuple, &result, exec_ctx_->GetTransaction());
+            for (auto &pair: result) {
+                auto res = index_info->table_->GetTuple(pair);
+                std::vector<Value> values;
+                values.reserve(
+                    plan_->InnerTableSchema().GetColumnCount() + child_exe_->GetOutputSchema().GetColumnCount());
+                for (size_t i = 0; i < child_exe_->GetOutputSchema().GetColumnCount(); i++) {
+                    values.push_back(t.GetValue(&child_exe_->GetOutputSchema(), i));
+                }
+                for (size_t i = 0; i < plan_->InnerTableSchema().GetColumnCount(); i++) {
+                    values.push_back(res.second.GetValue(&plan_->InnerTableSchema(), i));
+                }
+                *tuple = Tuple{values, &GetOutputSchema()};
+                return true;
+            }
+            if (plan_->GetJoinType() == JoinType::LEFT) {
+                std::vector<Value> values;
+                values.reserve(
+                    plan_->InnerTableSchema().GetColumnCount() + child_exe_->GetOutputSchema().GetColumnCount());
+                for (size_t i = 0; i < child_exe_->GetOutputSchema().GetColumnCount(); i++) {
+                    values.push_back(t.GetValue(&child_exe_->GetOutputSchema(), i));
+                }
+                for (size_t i = 0; i < plan_->InnerTableSchema().GetColumnCount(); i++) {
+                    values.push_back(
+                        ValueFactory::GetNullValueByType(plan_->InnerTableSchema().GetColumn(i).GetType()));
+                }
+                *tuple = Tuple{values, &GetOutputSchema()};
+                return true;
+            }
         }
         return false;
     }

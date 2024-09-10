@@ -14,12 +14,21 @@
 
 namespace bustub {
 
-LimitExecutor::LimitExecutor(ExecutorContext *exec_ctx, const LimitPlanNode *plan,
-                             std::unique_ptr<AbstractExecutor> &&child_executor)
-    : AbstractExecutor(exec_ctx) {}
+    LimitExecutor::LimitExecutor(ExecutorContext *exec_ctx, const LimitPlanNode *plan,
+                                 std::unique_ptr<AbstractExecutor> &&child_executor)
+        : AbstractExecutor(exec_ctx), plan_(plan), child_executor_(std::move(child_executor)) {}
 
-void LimitExecutor::Init() { throw NotImplementedException("LimitExecutor is not implemented"); }
+    void LimitExecutor::Init() {
+        count = 0;
+        child_executor_->Init();
+    }
 
-auto LimitExecutor::Next(Tuple *tuple, RID *rid) -> bool { return false; }
+    auto LimitExecutor::Next(Tuple *tuple, RID *rid) -> bool {
+        if (child_executor_->Next(tuple, rid) && count < plan_->GetLimit()) {
+            count++;
+            return true;
+        }
+        return false;
+    }
 
 }  // namespace bustub

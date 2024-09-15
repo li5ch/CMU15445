@@ -19,9 +19,15 @@
 namespace bustub {
 
     auto LockManager::LockTable(Transaction *txn, LockMode lock_mode, const table_oid_t &oid) -> bool {
-        if (txn->IsTableExclusiveLocked(oid)) {
-
+        // 已经锁了直接返回，判断是否锁升级
+        if (UpgradeLockTable(txn, lock_mode, oid)) {
+            table_lock_map_[oid]=
         }
+        // 加锁请求放入队列,同步唤醒
+        // 隔离级别，判断不同级别能否请求锁类型
+        // 多粒度锁检查，当前加锁后，对应祖先节点也要加锁
+        // 加锁成功后，更新lock_set
+
         return true;
     }
 
@@ -59,6 +65,29 @@ namespace bustub {
     }
 
     auto LockManager::UpgradeLockTable(Transaction *txn, LockMode lock_mode, const table_oid_t &oid) -> bool {
+        if (txn->IsTableIntentionExclusiveLocked(oid)) {
+            if (lock_mode == LockMode::INTENTION_EXCLUSIVE)
+                return true;
+            if (!CanLockUpgrade(LockMode::INTENTION_EXCLUSIVE, lock_mode)) {
+                throw TransactionAbortException(txn->GetTransactionId(), AbortReason::INCOMPATIBLE_UPGRADE);
+            }
+
+        }
+        if (txn->IsTableExclusiveLocked(oid) && lock_mode == LockMode::EXCLUSIVE) {
+            return true;
+        }
+        if (txn->IsTableSharedIntentionExclusiveLocked(oid) && lock_mode == LockMode::SHARED_INTENTION_EXCLUSIVE) {
+            return true;
+        }
+        if (txn->IsTableIntentionSharedLocked(oid) && lock_mode == LockMode::INTENTION_SHARED) {
+            return true;
+        }
+        if (txn->IsTableSharedLocked(oid) && lock_mode == LockMode::SHARED) {
+            return true;
+        }
+        // 加锁放入队列
+
+
         return false;
     }
 
@@ -79,11 +108,18 @@ namespace bustub {
     void LockManager::GrantNewLocksIfPossible(LockRequestQueue *lock_request_queue) {}
 
     auto LockManager::CanLockUpgrade(LockMode curr_lock_mode, LockMode requested_lock_mode) -> bool {
-        return false;
+        return isUpgrade[int(curr_lock_mode)][int(requested_lock_mode)];
     }
 
     auto
     LockManager::CheckAppropriateLockOnTable(Transaction *txn, const table_oid_t &oid, LockMode row_lock_mode) -> bool {
+        if (row_lock_mode == LockMode::SHARED) {
+            return txn->IsTableSharedLocked(oid) || txn->IsTableIntentionSharedLocked(oid);
+        }
+        if (row_lock_mode == LockMode::EXCLUSIVE) {
+            return txn->IsTableSharedIntentionExclusiveLocked(oid) || txn->IsTableExclusiveLocked(oid) ||
+                   txn->IsTableIntentionExclusiveLocked(oid);
+        }
         return false;
     }
 

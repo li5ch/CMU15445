@@ -40,6 +40,7 @@ namespace bustub {
             SHARED, EXCLUSIVE, INTENTION_SHARED, INTENTION_EXCLUSIVE, SHARED_INTENTION_EXCLUSIVE
         };
         static bool matrix_[5][5];
+        static bool isUpgrade[5][5];
 
         /**
          * Structure to hold a lock request.
@@ -359,11 +360,23 @@ namespace bustub {
         std::mutex waits_for_latch_;
     };
 
-    bool matrix_[5][5] = {{true, false, true, true, true},
-                          {true, false, true, true, true},
-                          {true, false, true, true, true},
-                          {true, false, true, true, true},
-                          {true, false, true, true, true}};
+    bool matrix_[5][5] = {{true,  false, true,  false, false},
+                          {false, false, false, false, false},
+                          {true,  false, true,  true,  true},
+                          {false, false, true,  true,  false},
+                          {false, false, true,  false, false}};
+    bool isUpgrade[5][5] = {
+        // SHARED
+        {false, true,  false, false, true},
+        // EXCLUSIVE
+        {false, false, false, false, false},
+        // INTENTION_SHARED
+        {true,  true,  true,  true,  true},
+        // INTENTION_EXCLUSIVE
+        {false, true,  false, false, true},
+        // SHARED_INTENTION_EXCLUSIVE
+        {false, true,  false, false, false}
+    };
 }  // namespace bustub
 
 template<>

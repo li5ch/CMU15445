@@ -19,14 +19,18 @@
 namespace bustub {
 
     auto LockManager::LockTable(Transaction *txn, LockMode lock_mode, const table_oid_t &oid) -> bool {
-        // 已经锁了直接返回，判断是否锁升级
+		// 隔离级别，判断不同级别能否请求锁类型
+		if(!CanTxnTakeLock(txn,lock_mode)){
+			return false;
+		}
+		// 已经锁了相同直接返回，不同判断能否锁升级，FIFO wait等待
         if (UpgradeLockTable(txn, lock_mode, oid)) {
             table_lock_map_[oid]=
         }
-        // 加锁请求放入队列,同步唤醒
-        // 隔离级别，判断不同级别能否请求锁类型
+        // 加锁请求放入队列,FIFO wait等待
+
         // 多粒度锁检查，当前加锁后，对应祖先节点也要加锁
-        // 加锁成功后，更新lock_set
+        // granted lock<=>更新txn的lock_set
 
         return true;
     }
@@ -64,6 +68,7 @@ namespace bustub {
         }
     }
 
+	// 检查；drop current lock；add new lock
     auto LockManager::UpgradeLockTable(Transaction *txn, LockMode lock_mode, const table_oid_t &oid) -> bool {
         if (txn->IsTableIntentionExclusiveLocked(oid)) {
             if (lock_mode == LockMode::INTENTION_EXCLUSIVE)
@@ -88,6 +93,7 @@ namespace bustub {
         // 加锁放入队列
 
 
+
         return false;
     }
 
@@ -101,18 +107,31 @@ namespace bustub {
     }
 
     auto LockManager::CanTxnTakeLock(Transaction *txn, LockMode lock_mode) -> bool {
+		// 不同隔离级别判断
 
         return false;
     }
 
-    void LockManager::GrantNewLocksIfPossible(LockRequestQueue *lock_request_queue) {}
+    void LockManager::GrantNewLocksIfPossible(LockRequestQueue *lock_request_queue) {
+		while(true){
+			{
+				std::unique_lock<std::mutex> lock(lock_request_queue->latch_);
+				lock_request_queue->cv_.wait(lock,[&]{return !lock_request_queue->request_queue_.empty();});
+				if(lock_request_queue->request_queue_.empty()) return ;
+				for (auto &request:lock_request_queue->request_queue_) {
+
+				}
+
+			}
+		}
+	}
 
     auto LockManager::CanLockUpgrade(LockMode curr_lock_mode, LockMode requested_lock_mode) -> bool {
         return isUpgrade[int(curr_lock_mode)][int(requested_lock_mode)];
     }
 
-    auto
-    LockManager::CheckAppropriateLockOnTable(Transaction *txn, const table_oid_t &oid, LockMode row_lock_mode) -> bool {
+	// 多粒度锁判断，行锁判断父节点表锁
+    auto LockManager::CheckAppropriateLockOnTable(Transaction *txn, const table_oid_t &oid, LockMode row_lock_mode) -> bool {
         if (row_lock_mode == LockMode::SHARED) {
             return txn->IsTableSharedLocked(oid) || txn->IsTableIntentionSharedLocked(oid);
         }

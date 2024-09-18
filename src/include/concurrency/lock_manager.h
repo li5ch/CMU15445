@@ -314,6 +314,10 @@ namespace bustub {
          */
         auto GetEdgeList() -> std::vector<std::pair<txn_id_t, txn_id_t>>;
 
+        auto InsertOrDeleteTableLock(Transaction *txn, LockMode lockMode, table_oid_t oid, bool isDelete) -> void;
+
+        auto InsertOrDeleteRowLock(Transaction *txn, LockMode lockMode, RID rid, bool isDelete) -> void;
+
         /**
          * Runs cycle detection in the background.
          */

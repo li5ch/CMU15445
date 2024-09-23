@@ -309,6 +309,8 @@ namespace bustub {
          */
         auto HasCycle(txn_id_t *txn_id) -> bool;
 
+        auto DFS(txn_id_t txnId) -> bool;
+
         /**
          * @return all edges in current waits_for graph
          */
@@ -362,6 +364,7 @@ namespace bustub {
         /** Waits-for graph representation. */
         std::unordered_map<txn_id_t, std::vector<txn_id_t>> waits_for_;
         std::mutex waits_for_latch_;
+        std::unordered_set<txn_id_t> active_txn_set;
     };
 
     bool matrix_[5][5] = {{true,  false, true,  false, false},

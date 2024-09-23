@@ -67,13 +67,8 @@ namespace bustub {
             }
         }
 
-        // 加锁请求放入队列,FIFO wait等待
-        auto lock_request = std::make_shared<LockRequest>(txn->GetTransactionId(), lock_mode, oid);
-        if (request_queue.get()->upgrading_ == INVALID_TXN_ID) {
-            std::scoped_lock<std::mutex> lock(request_queue->latch_);
-            request_queue.get()->request_queue_.push_back(lock_request);
-        }
-
+        auto lock_request = std::make_shared<LockRequest>(txn->GetTransactionId(), lock_mode,
+                                                          oid);
         while (true) {
             // 队列头是当前事务时，加锁退出
             {
@@ -88,8 +83,20 @@ namespace bustub {
 
                     for (auto &request: request_queue.get()->request_queue_) {
                         // 如果granted检查
+                        if (request->granted_) {
+                            if (!AreLocksCompatible(lock_mode, request->lock_mode_)) {
+                                // 放入队列
+                                // 加锁请求放入队列,FIFO wait等待
+
+                                if (request_queue.get()->upgrading_ == INVALID_TXN_ID) {
+                                    std::scoped_lock<std::mutex> lock(request_queue->latch_);
+                                    request_queue.get()->request_queue_.push_back(lock_request);
+                                }
+                                return false;
+                            }
+                        }
                     }
-                    return false;
+                    return true;
                 });
                 // 多粒度锁检查，当前加锁后，对应祖先节点也要加锁
                 // granted lock<=>更新txn的lock_set
@@ -186,8 +193,6 @@ namespace bustub {
             txn->SetState(TransactionState::SHRINKING);
         }
 
-
-
         // notify the request lock queue
 
         return true;
@@ -236,7 +241,27 @@ namespace bustub {
     }
 
     auto LockManager::HasCycle(txn_id_t *txn_id) -> bool {
+        for (auto [k, v]: waits_for_) {
+            if (DFS(k)) {
+                for (auto t: active_txn_set) {
+                    *txn_id = std::max(*txn_id, t);
+                }
+                active_txn_set.clear();
+                return true;
+            }
+        }
+        active_txn_set.clear();
+        return false;
+    }
 
+    auto LockManager::DFS(txn_id_t txnId) -> bool {
+        if (active_txn_set.count(txnId)) {
+            return true;
+        }
+        active_txn_set.insert(txnId);
+        for (auto &t: waits_for_[txnId]) {
+            if (DFS(t)) return true;
+        }
         return false;
     }
 

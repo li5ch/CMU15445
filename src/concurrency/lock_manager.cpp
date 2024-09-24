@@ -87,7 +87,13 @@ namespace bustub {
                             if (!AreLocksCompatible(lock_mode, request->lock_mode_)) {
                                 // 放入队列
                                 // 加锁请求放入队列,FIFO wait等待
-                                // TODO:死锁检测
+                                // 死锁检测
+                                AddEdge(request->txn_id_, txn->GetTransactionId());
+                                txn_id_t txnId;
+                                if (HasCycle(&txnId)) {
+
+                                }
+
                                 if (request_queue.get()->upgrading_ == INVALID_TXN_ID) {
                                     std::scoped_lock<std::mutex> lock(request_queue->latch_);
                                     request_queue.get()->request_queue_.push_back(lock_request);

@@ -12,6 +12,7 @@
 
 #pragma once
 
+#include <set>
 #include <algorithm>
 #include <condition_variable>  // NOLINT
 #include <list>
@@ -318,7 +319,8 @@ namespace bustub {
 
         auto InsertOrDeleteTableLock(Transaction *txn, LockMode lockMode, table_oid_t oid, bool isDelete) -> void;
 
-        auto InsertOrDeleteRowLock(Transaction *txn, LockMode lockMode, RID rid, bool isDelete) -> void;
+        auto InsertOrDeleteRowLock(Transaction *txn, LockMode lockMode, const table_oid_t &oid, const RID &rid,
+                                   bool isDelete) -> void;
 
         /**
          * Runs cycle detection in the background.
@@ -364,26 +366,12 @@ namespace bustub {
         /** Waits-for graph representation. */
         std::unordered_map<txn_id_t, std::vector<txn_id_t>> waits_for_;
         std::mutex waits_for_latch_;
-        std::unordered_set<txn_id_t> active_txn_set;
+        std::unordered_set<txn_id_t> waits_txn_set_;
+        std::set<txn_id_t> active_txn_set_;
+        std::unordered_map<txn_id_t, RID> txn_row_lock_map_;
+        std::unordered_map<txn_id_t, oid_t> txn_table_lock_map_;
     };
 
-    bool matrix_[5][5] = {{true,  false, true,  false, false},
-                          {false, false, false, false, false},
-                          {true,  false, true,  true,  true},
-                          {false, false, true,  true,  false},
-                          {false, false, true,  false, false}};
-    bool isUpgrade[5][5] = {
-        // SHARED
-        {false, true,  false, false, true},
-        // EXCLUSIVE
-        {false, false, false, false, false},
-        // INTENTION_SHARED
-        {true,  true,  true,  true,  true},
-        // INTENTION_EXCLUSIVE
-        {false, true,  false, false, true},
-        // SHARED_INTENTION_EXCLUSIVE
-        {false, true,  false, false, false}
-    };
 }  // namespace bustub
 
 template<>

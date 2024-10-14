@@ -408,7 +408,9 @@ namespace bustub {
         // You probably want to unlock all table and txn locks here.
         // TODO:
         for (auto r: row_lock_map_) {
+
         }
+        
     }
 
     void LockManager::AddEdge(txn_id_t t1, txn_id_t t2) {

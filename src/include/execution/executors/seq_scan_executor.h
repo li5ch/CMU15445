@@ -47,7 +47,6 @@ namespace bustub {
 		/** @return The output schema for the sequential scan */
 		auto GetOutputSchema() const -> const Schema & override { return plan_->OutputSchema(); }
 
-		void UnlockRowIfRequired(Transaction *txn, oid_t table_oid, const RID &rid);
 
 	private:
 		/** The sequential scan plan node to be executed */

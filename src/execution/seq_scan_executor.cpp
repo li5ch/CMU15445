@@ -52,7 +52,8 @@ namespace bustub {
 
 			try {
 				bool res = true;
-				if (exec_ctx_->GetTransaction()->GetIsolationLevel() != IsolationLevel::READ_UNCOMMITTED)
+				if (exec_ctx_->GetTransaction()->GetIsolationLevel() != IsolationLevel::READ_UNCOMMITTED ||
+					lock_mode != LockManager::LockMode::SHARED)
 					res = exec_ctx_->GetLockManager()->LockRow(exec_ctx_->GetTransaction(),
 															   lock_mode,
 															   table_info->oid_,
@@ -65,17 +66,21 @@ namespace bustub {
 						if (!value.IsNull() && value.GetAs<bool>()) {
 							*tuple = iter_->GetTuple().second;
 							*rid = iter_->GetRID();
-							UnlockRowIfRequired(exec_ctx_->GetTransaction(), table_info->oid_, iter_->GetRID());
+//							UnlockRowIfRequired(exec_ctx_->GetTransaction(), table_info->oid_, iter_->GetRID());
 							++(*iter_);
 							return true;
 						} else {
-							UnlockRowIfRequired(exec_ctx_->GetTransaction(), table_info->oid_, iter_->GetRID());
+							if (!exec_ctx_->GetLockManager()->UnlockRow(exec_ctx_->GetTransaction(), table_info->oid_,
+																		iter_->GetRID(), true)) {
+								LOG_ERROR("TransactionAbortException failed");
+								throw ExecutionException("SeqScan Executor Get Table ULock Failed");
+							}
 							++(*iter_);
 						}
 					} else {
 						*tuple = iter_->GetTuple().second;
 						*rid = iter_->GetRID();
-						UnlockRowIfRequired(exec_ctx_->GetTransaction(), table_info->oid_, iter_->GetRID());
+//						UnlockRowIfRequired(exec_ctx_->GetTransaction(), table_info->oid_, iter_->GetRID());
 						++(*iter_);
 
 						return true;
@@ -93,14 +98,6 @@ namespace bustub {
 			}
 		}
 		return false;
-	}
-
-	void SeqScanExecutor::UnlockRowIfRequired(Transaction *txn, oid_t table_oid, const RID &rid) {
-		if (txn->GetIsolationLevel() == IsolationLevel::READ_COMMITTED) {
-			if (!exec_ctx_->GetLockManager()->UnlockRow(txn, table_oid, rid)) {
-				throw ExecutionException("SeqScan Executor Get Table ULock Failed");
-			}
-		}
 	}
 
 }  // namespace bustub

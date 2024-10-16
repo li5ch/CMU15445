@@ -278,9 +278,9 @@ namespace bustub {
 		auto lock_request = std::make_shared<LockRequest>(txn->GetTransactionId(), lock_mode,
 														  oid, rid);
 		{
-			std::unique_lock<std::mutex> q_lock(request_queue.get()->latch_);
-			auto iter = request_queue.get()->request_queue_.begin();
-			while (iter != request_queue.get()->request_queue_.end()) {
+			std::unique_lock<std::mutex> q_lock(request_queue->latch_);
+			auto iter = request_queue->request_queue_.begin();
+			while (iter != request_queue->request_queue_.end()) {
 				if ((*iter)->txn_id_ == txn->GetTransactionId() && (*iter)->granted_) {
 					if (lock_mode == (*iter)->lock_mode_) {
 						return true;
@@ -293,25 +293,24 @@ namespace bustub {
 				}
 				iter++;
 			}
-			if (iter != request_queue.get()->request_queue_.end()) {
+			if (iter != request_queue->request_queue_.end()) {
 				InsertOrDeleteRowLock(txn, (*iter)->lock_mode_, oid, rid, true);
 				request_queue->request_queue_.erase(iter);
-				if (request_queue.get()->upgrading_ != INVALID_TXN_ID) {
+				if (request_queue->upgrading_ != INVALID_TXN_ID) {
 					txn->SetState(TransactionState::ABORTED);
 					throw TransactionAbortException(txn->GetTransactionId(), AbortReason::UPGRADE_CONFLICT);
 				}
-				request_queue.get()->upgrading_ = txn->GetTransactionId();
+				request_queue->upgrading_ = txn->GetTransactionId();
 
 			}
-
 
 			// 队列头是当前事务时，加锁退出
 			request_queue->cv_.wait(q_lock, [&] {
 				if (request_queue->request_queue_.empty()) {
-					request_queue.get()->request_queue_.push_back(lock_request);
+					request_queue->request_queue_.push_back(lock_request);
 					return true;
 				}
-				for (auto &request: request_queue.get()->request_queue_) {
+				for (auto &request: request_queue->request_queue_) {
 					// 如果granted检查
 					if (request->granted_) {
 						if (request->txn_id_ == lock_request->txn_id_ &&
@@ -321,17 +320,17 @@ namespace bustub {
 						if (!AreLocksCompatible(lock_mode, request->lock_mode_)) {
 							// 放入队列
 							// 加锁请求放入队列,FIFO wait等待
-							if (request_queue.get()->upgrading_ == INVALID_TXN_ID) {
-								request_queue.get()->request_queue_.push_back(lock_request);
+							if (request_queue->upgrading_ == INVALID_TXN_ID) {
+								request_queue->request_queue_.push_back(lock_request);
 							} else {
-								iter = request_queue.get()->request_queue_.begin();
-								while (iter != request_queue.get()->request_queue_.end()) {
+								iter = request_queue->request_queue_.begin();
+								while (iter != request_queue->request_queue_.end()) {
 									if (!(*iter)->granted_) {
 										break;
 									}
 									iter++;
 								}
-								request_queue.get()->request_queue_.insert(iter, lock_request);
+								request_queue->request_queue_.insert(iter, lock_request);
 							}
 							return false;
 						}
@@ -343,7 +342,7 @@ namespace bustub {
 			// granted lock<=>更新txn的lock_set
 			if (txn->GetState() == TransactionState::ABORTED) {
 				request_queue->request_queue_.remove(lock_request);
-				request_queue.get()->cv_.notify_all();
+				request_queue->cv_.notify_all();
 				return false;
 			}
 			lock_request->granted_ = true;
@@ -582,7 +581,7 @@ namespace bustub {
 				break;
 			case IsolationLevel::READ_COMMITTED:
 				if (txn->GetState() == TransactionState::SHRINKING &&
-					(lock_mode != LockMode::SHARED || lock_mode == LockMode::INTENTION_SHARED)) {
+					lock_mode != LockMode::SHARED && lock_mode != LockMode::INTENTION_SHARED) {
 					txn->SetState(TransactionState::ABORTED);
 					throw TransactionAbortException(txn->GetTransactionId(), AbortReason::LOCK_ON_SHRINKING);
 				}
